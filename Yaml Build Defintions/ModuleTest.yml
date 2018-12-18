@@ -7,7 +7,7 @@ parameters:
   pwsh: true
 
 steps:
-  - task: gittools.gitversion.gitversion-task.GitVersion@3
+  - task: gittools.gitversion.gitversion-task.GitVersion@4
     displayName: Build Version from GitVersion
   - task: PowerShell@2
     displayName: Invoke Build
@@ -26,7 +26,7 @@ steps:
   - task: PublishCodeCoverageResults@1
     displayName: Publish Code Coverage
     inputs:
-      summaryFileLocation: ${{ parameters.workingDirectory }}/Coverage.xml
+      summaryFileLocation: '**/Coverage.xml'
   - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
     displayName: Check Code Coverage Meets Minimum Requirement
     inputs:
