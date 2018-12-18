@@ -37,7 +37,6 @@ steps:
       includePartiallySucceeded: false
       baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
       baseRepoId: ${{ parameters.baseRepoId }}
-      baseBranchRef: "refs/heads/develop"
   - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
     displayName: Check Code Coverage variance isn't too high
     inputs:
@@ -49,4 +48,3 @@ steps:
       includePartiallySucceeded: false
       baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
       baseRepoId: ${{ parameters.baseRepoId }}
-      baseBranchRef: "refs/heads/develop"
