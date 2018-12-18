@@ -1,0 +1,70 @@
+parameters:
+  VstsFeedId: ""
+  baseRepoId: ""
+  baseBuildDefinitionId: ""
+  coverageThreshold: 60
+  coverageVariance: 5
+  workingDirectory: $(System.DefaultWorkingDirectory)
+  BuildServiceAccountId: ""
+
+steps:
+  - task: gittools.gitversion.gitversion-task.GitVersion@3
+    displayName: Build Version from GitVersion
+  - task: PowerShell@2
+    displayName: Invoke Build
+    inputs:
+      targetType: "filePath"
+      filePath: .build.ps1
+      arguments: -Task Test, CreateNugetSpec -ResolveDependency
+      pwsh: true
+      workingDirectory: ${{ parameters.workingDirectory }}
+    env:
+      SYSTEM_ACCESSTOKEN: $(system.accesstoken)
+      BuildServiceAccountId: ${{ parameters.BuildServiceAccountId }}
+  - task: PublishTestResults@2
+    displayName: Publish Pester Test Results
+    inputs:
+      testRunner: "NUnit"
+      mergeTestResults: "true"
+    condition: always()
+  - task: PublishCodeCoverageResults@1
+    displayName: Publish Code Coverage
+    inputs:
+      summaryFileLocation: ${{ parameters.workingDirectory }}/Coverage.xml
+  - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
+    displayName: Check Code Coverage Meets Minimum Requirement
+    inputs:
+      checkCoverage: true
+      coverageFailOption: fixed
+      coverageType: lines
+      coverageThreshold: ${{ parameters.coverageThreshold }}
+      includePartiallySucceeded: false
+      baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
+      baseRepoId: ${{ parameters.baseRepoId }}
+      baseBranchRef: "refs/heads/develop"
+  - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
+    displayName: Check Code Coverage variance isn't too high
+    inputs:
+      checkCoverage: true
+      coverageType: lines
+      allowCoverageVariance: true
+      coverageVariance: ${{ parameters.coverageVariance }}
+      coverageDeltaType: percentage
+      includePartiallySucceeded: false
+      baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
+      baseRepoId: ${{ parameters.baseRepoId }}
+      baseBranchRef: "refs/heads/develop"
+  - task: NuGetCommand@2
+    displayName: Package Module
+    inputs:
+      command: pack
+      packagesToPack: '**\BuildOutput\*.nuspec'
+      versioningScheme: byEnvVar
+      versionEnvVar: GITVERSION_FULLSEMVER
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/develop')))
+  - task: NuGetCommand@2
+    displayName: Publish Module to NuGet
+    inputs:
+      command: push
+      publishVstsFeed: ${{ parameters.VstsFeedId }}
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/develop')))
