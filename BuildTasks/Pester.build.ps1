@@ -25,7 +25,7 @@ param (
 
 task Test {
     $PathsToCover = @()
-    "$ProjectPath\src\Classes\*.ps1", "$ProjectPath\src\Private\*.ps1", "$ProjectPath\src\Public\*.ps1" | % {
+    "$ProjectPath\Classes\*.ps1", "$ProjectPath\Private\*.ps1", "$ProjectPath\Public\*.ps1" | % {
         if (Test-Path $_) {
             $PathsToCover += $_
         }
