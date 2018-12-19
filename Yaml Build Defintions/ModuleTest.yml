@@ -5,6 +5,7 @@ parameters:
   coverageVariance: 5
   workingDirectory: $(System.DefaultWorkingDirectory)
   pwsh: true
+  moduleName: ""
 
 steps:
   - task: gittools.gitversion.gitversion-task.GitVersion@4
@@ -52,4 +53,4 @@ steps:
     displayName: 'Publish Module Artifact'
     inputs:
       PathtoPublish: 'BuildOutput'
-      ArtifactName: module
+      ArtifactName: ${{parameters.moduleName}}
