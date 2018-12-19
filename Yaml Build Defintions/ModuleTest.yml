@@ -48,3 +48,8 @@ steps:
       includePartiallySucceeded: false
       baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
       baseRepoId: ${{ parameters.baseRepoId }}
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Module Artifact'
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)\BuildOutput'
+      ArtifactName: module

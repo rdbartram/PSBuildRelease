@@ -1,27 +1,7 @@
 param (
     [parameter()]
     [io.DirectoryInfo]
-    $ProjectPath = (property ProjectPath $BuildRoot),
-
-    [parameter()]
-    [string]
-    $ProjectName = (property ProjectName $ProjectName),
-
-    [parameter()]
-    [switch]
-    $Pack,
-
-    [parameter()]
-    $Cert = (Select-Object -First 1 -InputObject (Get-ChildItem -Path cert:\CurrentUser\my -CodeSigningCert)),
-
-    [parameter()]
-    [switch]
-    $CounterSign,
-
-    [Parameter()]
-    [Uri]
-    $TimestampServer = 'http://timestamp.globalsign.com/scripts/timstamp.dll'
-)
+    $ProjectPath = (property ProjectPath $BuildRoot))
 
 task Test {
     $PathsToCover = @()
