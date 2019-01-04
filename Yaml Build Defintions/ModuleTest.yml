@@ -13,17 +13,17 @@ jobs:
   pool:
     vmImage: 'vs2017-win2016'
   steps:
-    - task: gittools.gitversion.gitversion-task.GitVersion@3
-      displayName: Build Version from GitVersion
-    - task: PowerShell@2
-      displayName: Compile Module
-      inputs:
-        targetType: "filePath"
-        filePath: .build.ps1
-        arguments: -Task CreateModuleManifest -ResolveDependency
-        pwsh: true
-        workingDirectory: ${{ parameters.workingDirectory }}
-    - task: PublishPipelineArtifact@0
-      displayName: "Publish Module Artifact"
-      inputs:
-        targetPath: BuildOutput
+  - task: gittools.gitversion.gitversion-task.GitVersion@3
+    displayName: Build Version from GitVersion
+  - task: PowerShell@2
+    displayName: Compile Module
+    inputs:
+      targetType: "filePath"
+      filePath: .build.ps1
+      arguments: -Task CreateModuleManifest -ResolveDependency
+      pwsh: true
+      workingDirectory: ${{ parameters.workingDirectory }}
+  - task: PublishPipelineArtifact@0
+    displayName: "Publish Module Artifact"
+    inputs:
+      targetPath: BuildOutput
