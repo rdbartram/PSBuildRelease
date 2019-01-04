@@ -10,6 +10,7 @@ parameters:
 
 jobs:
 - job: Compile
+  displayName: Compile
   pool:
     vmImage: 'vs2017-win2016'
 
@@ -21,7 +22,7 @@ jobs:
                   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
                   iwr 'https://github.com/PowerShell/PowerShell/releases/download/v6.1.1/PowerShell-6.1.1-win-x64.msi' -OutFile $env:temp\pwsh.msi
                   Start-Process msiexec.exe -Wait -ArgumentList ('/I {0} /quiet' -f "$env:temp\pwsh.msi")
-                  '##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\'
+                  "##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\"
               }
 
       displayName: "Install Core"
@@ -70,7 +71,7 @@ jobs:
                   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
                   iwr 'https://github.com/PowerShell/PowerShell/releases/download/v6.1.1/PowerShell-6.1.1-win-x64.msi' -OutFile $env:temp\pwsh.msi
                   Start-Process msiexec.exe -Wait -ArgumentList ('/I {0} /quiet' -f "$env:temp\pwsh.msi")
-                  '##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\'
+                  "##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\"
               }
       displayName: "Install Core"
       condition: eq(variables['PowerShellVersion'],'Core')
