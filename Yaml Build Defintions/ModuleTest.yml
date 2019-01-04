@@ -12,11 +12,9 @@ jobs:
 - job: Compile
   pool:
     vmImage: 'vs2017-win2016'
-
   steps:
     - task: gittools.gitversion.gitversion-task.GitVersion@3
       displayName: Build Version from GitVersion
-
     - task: PowerShell@2
       displayName: Compile Module
       inputs:
@@ -25,7 +23,6 @@ jobs:
         arguments: -Task CreateModuleManifest -ResolveDependency
         pwsh: true
         workingDirectory: ${{ parameters.workingDirectory }}
-
     - task: PublishPipelineArtifact@0
       displayName: "Publish Module Artifact"
       inputs:
