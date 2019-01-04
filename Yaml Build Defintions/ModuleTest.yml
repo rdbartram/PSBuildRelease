@@ -2,20 +2,21 @@ resources:
   - repo: self
 
 parameters:
+  VstsFeedId: "f9245705-57f4-4044-ac91-85d34b6fe871"
   baseRepoId: ""
   baseBuildDefinitionId: ""
   coverageThreshold: 60
   coverageVariance: 5
   workingDirectory: $(System.DefaultWorkingDirectory)
+  BuildServiceAccountId: "bf1ff99a-938b-4307-8b5d-344c8a51e178"
   moduleName: ""
   refBranch: "refs/heads/develop"
+  pwsh: true
 
-phases:
-  - phase: Phase_1
-    displayName: Compile
+jobs:
+  - job: Compile
     condition: succeeded()
-    queue:
-      name: Hosted VS2017
+    pool: Hosted VS2017
 
     steps:
       - task: gittools.gitversion.gitversion-task.GitVersion@3
@@ -39,6 +40,9 @@ phases:
           arguments: -Task CreateModuleManifest -ResolveDependency
           pwsh: true
           workingDirectory: ${{ parameters.workingDirectory }}
+        env:
+          SYSTEM_ACCESSTOKEN: $(system.accesstoken)
+          BuildServiceAccountId: ${{ parameters.BuildServiceAccountId }}
 
       - task: PublishPipelineArtifact@0
         displayName: "Publish Module Artifact"
@@ -46,12 +50,11 @@ phases:
           targetPath: BuildOutput
         enabled: true
 
-  - phase: Phase_2
-    displayName: Test on
-    dependsOn: Phase_1
+  - job: Test
+    displayName: 'Test On'
+    dependsOn: Compile
     condition: succeeded()
-    queue:
-      name: Hosted VS2017
+    pool: Hosted VS2017
     strategy:
       maxParallel: 2
       matrix:
@@ -78,7 +81,7 @@ phases:
         condition: eq(variables['PowerShellVersion'],'Core')
 
       - task: PowerShell@2
-        displayName: Windows PowerShell
+        displayName: Execute Pester
         inputs:
           targetType: "filePath"
           filePath: .build.ps1
@@ -87,27 +90,25 @@ phases:
           workingDirectory: ${{ parameters.workingDirectory }}
 
       - task: PublishTestResults@2
-        displayName: "Publish Test Results **/TEST-*.xml"
+        displayName: "Publish Test Results"
         inputs:
           testResultsFormat: NUnit
           testRunTitle: "$(PowerShellVersion) Tests"
         condition: always()
 
       - task: PublishCodeCoverageResults@1
-        displayName: "Publish code coverage from **/Coverage-*.xml"
+        displayName: "Publish code coverage"
         inputs:
           summaryFileLocation: "**/Coverage-*.xml"
         condition: always()
 
-  - phase: Phase_3
-    displayName: Publish
+  - job: Publish
     dependsOn:
-      - Phase_2
-      - Phase_1
+      - Compile
+      - Test
     condition: succeeded()
 
-    queue:
-      name: Hosted VS2017
+    pool: Hosted VS2017
 
     steps:
       - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
