@@ -11,7 +11,7 @@ parameters:
 jobs:
 - job: Compile
   pool:
-  vmImage: 'vs2017-win2016'
+    vmImage: 'vs2017-win2016'
 
   steps:
     - task: gittools.gitversion.gitversion-task.GitVersion@3
