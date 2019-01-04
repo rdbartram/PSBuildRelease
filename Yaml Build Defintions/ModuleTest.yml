@@ -25,9 +25,6 @@ jobs:
         arguments: -Task CreateModuleManifest -ResolveDependency
         pwsh: true
         workingDirectory: ${{ parameters.workingDirectory }}
-      env:
-        SYSTEM_ACCESSTOKEN: $(system.accesstoken)
-        BuildServiceAccountId: ${{ parameters.BuildServiceAccountId }}
 
     - task: PublishPipelineArtifact@0
       displayName: "Publish Module Artifact"
