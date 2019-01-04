@@ -1,18 +1,13 @@
+# File: templates/npm-with-params.yml
+
 parameters:
-  baseRepoId: ""
-  baseBuildDefinitionId: ""
-  coverageThreshold: 60
-  coverageVariance: 5
-  workingDirectory: $(System.DefaultWorkingDirectory)
-  moduleName: ""
-  refBranch: "refs/heads/develop"
-  pwsh: true
+  name: ''  # defaults for any parameters that aren't specified
+  vmImage: ''
 
 jobs:
-  - job: Compile
-    pool:
-      vmImage: 'vs2017-win2016'
-
-    steps:
-      - task: gittools.gitversion.gitversion-task.GitVersion@3
-        displayName: Build Version from GitVersion
+- job: ${{ parameters.name }}
+  pool: 
+    vmImage: ${{ parameters.vmImage }}
+  steps:
+  - script: npm install
+  - script: npm test
