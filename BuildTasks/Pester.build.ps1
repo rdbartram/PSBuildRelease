@@ -26,7 +26,7 @@ task Test {
     [void] $pesterArgs.Add('OutputFile', "$ProjectPath\TEST-Results.xml")
 
     [void] $pesterArgs.Add('CodeCoverageOutputFileFormat', 'JaCoCo')
-    [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage.xml")
+    [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage-Results.xml")
 
     $result = Invoke-Pester @pesterArgs
     if ($result.FailedCount -gt 0) {
