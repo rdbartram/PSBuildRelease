@@ -1,7 +1,12 @@
 param (
     [parameter()]
     [io.DirectoryInfo]
-    $ProjectPath = (property ProjectPath $BuildRoot))
+    $ProjectPath = (property ProjectPath $BuildRoot),
+    
+    [parameter()]
+    [string[]]
+    $ExcludedTag = (property ExcludedTags 'alpha')
+)
 
 task Test {
     $PathsToCover = @()
@@ -13,7 +18,7 @@ task Test {
 
     $pesterArgs = @{
         PassThru     = $true
-        ExcludeTag   = 'alpha'
+        ExcludeTag   = $ExcludedTag
         CodeCoverage = $PathsToCover
     }
 
