@@ -11,124 +11,38 @@ parameters:
   pwsh: true
 
 jobs:
-- job: Compile
-  condition: succeeded()
-  pool: Hosted VS2017
+  - job: Compile
+    condition: succeeded()
+    pool: Hosted VS2017
 
-  steps:
-  - task: gittools.gitversion.gitversion-task.GitVersion@3
-    displayName: Build Version from GitVersion
-  - powershell: |
-      if(-not (gcm pwsh -ea SilentlyContinue)) {
-                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                iwr 'https://github.com/PowerShell/PowerShell/releases/download/v6.1.1/PowerShell-6.1.1-win-x64.msi' -OutFile $env:temp\pwsh.msi
-                Start-Process msiexec.exe -Wait -ArgumentList ('/I {0} /quiet' -f "$env:temp\pwsh.msi")
-                '##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\'
-            }
+    steps:
+      - task: gittools.gitversion.gitversion-task.GitVersion@3
+        displayName: Build Version from GitVersion
+      - powershell: |
+          if(-not (gcm pwsh -ea SilentlyContinue)) {
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                    iwr 'https://github.com/PowerShell/PowerShell/releases/download/v6.1.1/PowerShell-6.1.1-win-x64.msi' -OutFile $env:temp\pwsh.msi
+                    Start-Process msiexec.exe -Wait -ArgumentList ('/I {0} /quiet' -f "$env:temp\pwsh.msi")
+                    '##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\'
+                }
 
-    displayName: "Install Core"
-    enabled: true
+        displayName: "Install Core"
+        enabled: true
 
-  - task: PowerShell@2
-    displayName: Compile Module
-    inputs:
-      targetType: "filePath"
-      filePath: .build.ps1
-      arguments: -Task CreateModuleManifest -ResolveDependency
-      pwsh: true
-      workingDirectory: ${{ parameters.workingDirectory }}
-    env:
-      SYSTEM_ACCESSTOKEN: $(system.accesstoken)
-      BuildServiceAccountId: ${{ parameters.BuildServiceAccountId }}
+      - task: PowerShell@2
+        displayName: Compile Module
+        inputs:
+          targetType: "filePath"
+          filePath: .build.ps1
+          arguments: -Task CreateModuleManifest -ResolveDependency
+          pwsh: true
+          workingDirectory: ${{ parameters.workingDirectory }}
+        env:
+          SYSTEM_ACCESSTOKEN: $(system.accesstoken)
+          BuildServiceAccountId: ${{ parameters.BuildServiceAccountId }}
 
-  - task: PublishPipelineArtifact@0
-    displayName: "Publish Module Artifact"
-    inputs:
-      targetPath: BuildOutput
-    enabled: true
-
-- job: Test
-  displayName: 'Test On'
-  dependsOn: Compile
-  condition: succeeded()
-  pool: Hosted VS2017
-  strategy:
-    maxParallel: 2
-    matrix:
-      Core:
-        PowerShellVersion: Core
-      Windows:
-        PowerShellVersion: Windows
-
-  steps:
-  - task: DownloadPipelineArtifact@0
-    displayName: "Download Pipeline Artifact"
-    inputs:
-      targetPath: BuildOutput
-    enabled: false
-
-  - powershell: |
-      if(-not (gcm pwsh -ea SilentlyContinue)) {
-                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                iwr 'https://github.com/PowerShell/PowerShell/releases/download/v6.1.1/PowerShell-6.1.1-win-x64.msi' -OutFile $env:temp\pwsh.msi
-                Start-Process msiexec.exe -Wait -ArgumentList ('/I {0} /quiet' -f "$env:temp\pwsh.msi")
-                '##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\'
-            }
-    displayName: "Install Core"
-    condition: eq(variables['PowerShellVersion'],'Core')
-
-  - task: PowerShell@2
-    displayName: Execute Pester
-    inputs:
-      targetType: "filePath"
-      filePath: .build.ps1
-      arguments: -Task Test -ResolveDependency
-      pwsh: ${{ parameters.pwsh }}
-      workingDirectory: ${{ parameters.workingDirectory }}
-
-  - task: PublishTestResults@2
-    displayName: "Publish Test Results"
-    inputs:
-      testResultsFormat: NUnit
-      testRunTitle: "$(PowerShellVersion) Tests"
-    condition: always()
-
-  - task: PublishCodeCoverageResults@1
-    displayName: "Publish code coverage"
-    inputs:
-      summaryFileLocation: "**/Coverage-*.xml"
-    condition: always()
-
-- job: Publish
-  dependsOn:
-  - Compile
-  - Test
-  condition: succeeded()
-
-  pool: Hosted VS2017
-
-  steps:
-  - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
-    displayName: Check Code Coverage Meets Minimum Requirement
-    inputs:
-      checkCoverage: true
-      coverageFailOption: fixed
-      coverageType: lines
-      coverageThreshold: ${{ parameters.coverageThreshold }}
-      includePartiallySucceeded: false
-      baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
-      baseRepoId: ${{ parameters.baseRepoId }}
-      baseBranchRef: ${{ parameters.refBranch }}
-
-  - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
-    displayName: Check Code Coverage variance isn't too high
-    inputs:
-      checkCoverage: true
-      coverageType: lines
-      allowCoverageVariance: true
-      coverageVariance: ${{ parameters.coverageVariance }}
-      coverageDeltaType: percentage
-      includePartiallySucceeded: false
-      baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
-      baseRepoId: ${{ parameters.baseRepoId }}
-      baseBranchRef: ${{ parameters.refBranch }}
+      - task: PublishPipelineArtifact@0
+        displayName: "Publish Module Artifact"
+        inputs:
+          targetPath: BuildOutput
+        enabled: true
