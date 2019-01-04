@@ -11,7 +11,8 @@ parameters:
 jobs:
   - job: Compile
     condition: succeeded()
-    pool: Hosted VS2017
+    pool:
+      vmImage: 'vs2017-win2016'
 
     steps:
       - task: gittools.gitversion.gitversion-task.GitVersion@3
