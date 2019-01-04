@@ -1,6 +1,3 @@
-resources:
-  - repo: self
-
 parameters:
   VstsFeedId: "f9245705-57f4-4044-ac91-85d34b6fe871"
   baseRepoId: ""
