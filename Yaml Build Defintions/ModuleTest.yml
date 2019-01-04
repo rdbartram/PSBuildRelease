@@ -13,4 +13,5 @@ jobs:
   pool:
     vmImage: 'vs2017-win2016'
   steps:
-  - script: npm install
+  - task: gittools.gitversion.gitversion-task.GitVersion@3
+    displayName: Build Version from GitVersion
