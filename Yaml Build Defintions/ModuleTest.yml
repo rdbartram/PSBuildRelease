@@ -1,12 +1,12 @@
 parameters:
-baseRepoId: ""
-baseBuildDefinitionId: ""
-coverageThreshold: 60
-coverageVariance: 5
-workingDirectory: $(System.DefaultWorkingDirectory)
-moduleName: ""
-refBranch: "refs/heads/develop"
-pwsh: true
+  baseRepoId: ""
+  baseBuildDefinitionId: ""
+  coverageThreshold: 60
+  coverageVariance: 5
+  workingDirectory: $(System.DefaultWorkingDirectory)
+  moduleName: ""
+  refBranch: "refs/heads/develop"
+  pwsh: true
 
 jobs:
 - job: Compile
