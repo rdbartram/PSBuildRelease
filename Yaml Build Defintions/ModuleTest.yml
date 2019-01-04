@@ -64,7 +64,6 @@ jobs:
       displayName: "Download Pipeline Artifact"
       inputs:
         targetPath: BuildOutput
-      enabled: false
 
     - powershell: |
         if(-not (gcm pwsh -ea SilentlyContinue)) {
