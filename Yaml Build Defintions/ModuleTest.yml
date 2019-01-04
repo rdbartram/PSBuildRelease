@@ -97,7 +97,8 @@ jobs:
         summaryFileLocation: "**/Coverage-*.xml"
       condition: always()
 
-- job: Build Checks
+- job: BuildChecks
+  displayName: 'Build Checks'
   dependsOn:
     - Compile
     - Test
