@@ -1,56 +1,136 @@
+resources:
+  - repo: self
+
 parameters:
   baseRepoId: ""
   baseBuildDefinitionId: ""
   coverageThreshold: 60
   coverageVariance: 5
   workingDirectory: $(System.DefaultWorkingDirectory)
-  pwsh: true
   moduleName: ""
+  refBranch: "refs/heads/develop"
 
-steps:
-  - task: gittools.gitversion.gitversion-task.GitVersion@4
-    displayName: Build Version from GitVersion
-  - task: PowerShell@2
-    displayName: Invoke Build
-    inputs:
-      targetType: "filePath"
-      filePath: .build.ps1
-      arguments: -Task Test -ResolveDependency
-      pwsh: ${{ parameters.pwsh }}
-      workingDirectory: ${{ parameters.workingDirectory }}
-  - task: PublishTestResults@2
-    displayName: Publish Pester Test Results
-    inputs:
-      testRunner: "NUnit"
-      mergeTestResults: "true"
-    condition: always()
-  - task: PublishCodeCoverageResults@1
-    displayName: Publish Code Coverage
-    inputs:
-      summaryFileLocation: '**/Coverage.xml'
-  - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
-    displayName: Check Code Coverage Meets Minimum Requirement
-    inputs:
-      checkCoverage: true
-      coverageFailOption: fixed
-      coverageType: lines
-      coverageThreshold: ${{ parameters.coverageThreshold }}
-      includePartiallySucceeded: false
-      baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
-      baseRepoId: ${{ parameters.baseRepoId }}
-  - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
-    displayName: Check Code Coverage variance isn't too high
-    inputs:
-      checkCoverage: true
-      coverageType: lines
-      allowCoverageVariance: true
-      coverageVariance: ${{ parameters.coverageVariance }}
-      coverageDeltaType: percentage
-      includePartiallySucceeded: false
-      baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
-      baseRepoId: ${{ parameters.baseRepoId }}
-  - task: PublishBuildArtifacts@1
-    displayName: 'Publish Module Artifact'
-    inputs:
-      PathtoPublish: 'BuildOutput'
-      ArtifactName: ${{parameters.moduleName}}
+phases:
+  - phase: Phase_1
+    displayName: Compile
+    condition: succeeded()
+    queue:
+      name: Hosted VS2017
+
+    steps:
+      - task: gittools.gitversion.gitversion-task.GitVersion@3
+        displayName: Build Version from GitVersion
+      - powershell: |
+          if(-not (gcm pwsh -ea SilentlyContinue)) {
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                    iwr 'https://github.com/PowerShell/PowerShell/releases/download/v6.1.1/PowerShell-6.1.1-win-x64.msi' -OutFile $env:temp\pwsh.msi
+                    Start-Process msiexec.exe -Wait -ArgumentList ('/I {0} /quiet' -f "$env:temp\pwsh.msi")
+                    '##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\'
+                }
+
+        displayName: "Install Core"
+        enabled: true
+
+      - task: PowerShell@2
+        displayName: Compile Module
+        inputs:
+          targetType: "filePath"
+          filePath: .build.ps1
+          arguments: -Task CreateModuleManifest -ResolveDependency
+          pwsh: true
+          workingDirectory: ${{ parameters.workingDirectory }}
+
+      - task: PublishPipelineArtifact@0
+        displayName: "Publish Module Artifact"
+        inputs:
+          targetPath: BuildOutput
+        enabled: true
+
+  - phase: Phase_2
+    displayName: Test on
+    dependsOn: Phase_1
+    condition: succeeded()
+    queue:
+      name: Hosted VS2017
+    strategy:
+      maxParallel: 2
+      matrix:
+        Core:
+          PowerShellVersion: Core
+        Windows:
+          PowerShellVersion: Windows
+
+    steps:
+      - task: DownloadPipelineArtifact@0
+        displayName: "Download Pipeline Artifact"
+        inputs:
+          targetPath: BuildOutput
+        enabled: false
+
+      - powershell: |
+          if(-not (gcm pwsh -ea SilentlyContinue)) {
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                    iwr 'https://github.com/PowerShell/PowerShell/releases/download/v6.1.1/PowerShell-6.1.1-win-x64.msi' -OutFile $env:temp\pwsh.msi
+                    Start-Process msiexec.exe -Wait -ArgumentList ('/I {0} /quiet' -f "$env:temp\pwsh.msi")
+                    '##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\'
+                }
+        displayName: "Install Core"
+        condition: eq(variables['PowerShellVersion'],'Core')
+
+      - task: PowerShell@2
+        displayName: Windows PowerShell
+        inputs:
+          targetType: "filePath"
+          filePath: .build.ps1
+          arguments: -Task Test -ResolveDependency
+          pwsh: ${{ parameters.pwsh }}
+          workingDirectory: ${{ parameters.workingDirectory }}
+
+      - task: PublishTestResults@2
+        displayName: "Publish Test Results **/TEST-*.xml"
+        inputs:
+          testResultsFormat: NUnit
+          testRunTitle: "$(PowerShellVersion) Tests"
+        condition: always()
+
+      - task: PublishCodeCoverageResults@1
+        displayName: "Publish code coverage from **/Coverage-*.xml"
+        inputs:
+          summaryFileLocation: "**/Coverage-*.xml"
+        condition: always()
+
+  - phase: Phase_3
+    displayName: Publish
+    dependsOn:
+      - Phase_2
+      - Phase_1
+    condition: succeeded()
+
+    queue:
+      name: Hosted VS2017
+
+    steps:
+      - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
+        displayName: Check Code Coverage Meets Minimum Requirement
+        inputs:
+          checkCoverage: true
+          coverageFailOption: fixed
+          coverageType: lines
+          coverageThreshold: ${{ parameters.coverageThreshold }}
+          includePartiallySucceeded: false
+          baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
+          baseRepoId: ${{ parameters.baseRepoId }}
+          baseBranchRef: ${{ parameters.refBranch }}
+
+      - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
+        displayName: Check Code Coverage variance isn't too high
+        inputs:
+          checkCoverage: true
+          coverageType: lines
+          allowCoverageVariance: true
+          coverageVariance: ${{ parameters.coverageVariance }}
+          coverageDeltaType: percentage
+          includePartiallySucceeded: false
+          baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
+          baseRepoId: ${{ parameters.baseRepoId }}
+          baseBranchRef: ${{ parameters.refBranch }}
