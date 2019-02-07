@@ -1,0 +1,155 @@
+parameters:
+  baseRepoId: ""
+  baseBuildDefinitionId: ""
+  coverageThreshold: 60
+  coverageVariance: 5
+  workingDirectory: $(System.DefaultWorkingDirectory)
+
+  agent: "vs2017-win2016"
+
+jobs:
+  - job: Compile
+    displayName: Compile
+    pool:
+      name: ${{ parameters.agent }}
+
+    steps:
+      - task: gittools.gitversion.gitversion-task.GitVersion@4
+        displayName: Build Version from GitVersion
+
+      - powershell: |
+          if(-not (gcm pwsh -ea SilentlyContinue)) {
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                    iwr 'https://github.com/PowerShell/PowerShell/releases/download/v6.1.1/PowerShell-6.1.1-win-x64.msi' -OutFile $env:temp\pwsh.msi
+                    Start-Process msiexec.exe -Wait -ArgumentList ('/I {0} /quiet' -f "$env:temp\pwsh.msi")
+                    "##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\"
+                }
+
+        displayName: Install Core
+
+      - task: PowerShell@2
+        displayName: Compile Module
+        inputs:
+          targetType: "filePath"
+          filePath: ${{ parameters.workingDirectory }}\.build.ps1
+          arguments: -Task CreateModuleManifest, DownloadDependentModules -ResolveDependency
+          pwsh: true
+          workingDirectory: ${{ parameters.workingDirectory }}
+
+      - task: PublishPipelineArtifact@0
+        displayName: "Publish Module Artifact"
+        inputs:
+          ArtifactName: Module
+          targetPath: ${{ parameters.workingDirectory }}\BuildOutput
+
+      - task: PublishPipelineArtifact@0
+        displayName: "Publish Module Dependencies Artifact"
+        inputs:
+          ArtifactName: Dependencies
+          targetPath: ${{ parameters.workingDirectory }}\src\Dependencies
+
+  - job: Test
+    displayName: "Test On"
+    dependsOn: Compile
+    condition: succeeded('Compile')
+    pool:
+      name: ${{ parameters.agent }}
+    strategy:
+      maxParallel: 2
+      matrix:
+        Windows:
+          PowerShellVersion: Windows
+        Core:
+          PowerShellVersion: Core
+
+    steps:
+      - task: DownloadPipelineArtifact@0
+        displayName: "Download Compiled Artifact"
+        inputs:
+          ArtifactName: Module
+          targetPath: ${{ parameters.workingDirectory }}\BuildOutput
+
+      - task: DownloadPipelineArtifact@0
+        displayName: "Download Module Dependencies Artifact"
+        inputs:
+          ArtifactName: Dependencies
+          targetPath: ${{ parameters.workingDirectory }}\src\Dependencies
+
+      - powershell: |
+          if(-not (gcm pwsh -ea SilentlyContinue)) {
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                    iwr 'https://github.com/PowerShell/PowerShell/releases/download/v6.1.1/PowerShell-6.1.1-win-x64.msi' -OutFile $env:temp\pwsh.msi
+                    Start-Process msiexec.exe -Wait -ArgumentList ('/I {0} /quiet' -f "$env:temp\pwsh.msi")
+                    "##vso[task.prependpath]$env:ProgramFiles\PowerShell\6\"
+                }
+        displayName: "Install Core"
+        condition: eq(variables['PowerShellVersion'],'Core')
+
+      - task: PowerShell@2
+        displayName: Execute Pester
+        condition: eq(variables['PowerShellVersion'],'Core')
+        inputs:
+          targetType: "filePath"
+          filePath: ${{ parameters.workingDirectory }}\.build.ps1
+          arguments: -Task Test -ResolveDependency
+          pwsh: true
+          workingDirectory: ${{ parameters.workingDirectory }}
+
+      - task: PowerShell@2
+        displayName: Execute Pester
+        condition: eq(variables['PowerShellVersion'],'Windows')
+        inputs:
+          targetType: "filePath"
+          filePath: ${{ parameters.workingDirectory }}\.build.ps1
+          arguments: -Task Test -ResolveDependency
+          pwsh: false
+          workingDirectory: ${{ parameters.workingDirectory }}
+
+      - task: PublishTestResults@2
+        displayName: "Publish Test Results"
+        inputs:
+          testResultsFormat: NUnit
+          testRunTitle: "$(PowerShellVersion) Tests"
+        condition: always()
+
+      - task: PublishCodeCoverageResults@1
+        displayName: "Publish code coverage"
+        inputs:
+          summaryFileLocation: "**/coverage-5*.xml"
+        condition: always()
+
+  - job: BuildChecks
+    displayName: "Build Checks"
+    dependsOn:
+      - Compile
+      - Test
+    pool:
+      name: ${{ parameters.agent }}
+
+    condition: always()
+
+    steps:
+      - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
+        displayName: Check Code Coverage Meets Minimum Requirement
+        inputs:
+          checkCoverage: true
+          coverageFailOption: fixed
+          coverageType: lines
+          coverageThreshold: ${{ parameters.coverageThreshold }}
+          includePartiallySucceeded: false
+          baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
+          baseRepoId: ${{ parameters.baseRepoId }}
+          baseBranchRef: ${{ parameters.refBranch }}
+
+      - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
+        displayName: Check Code Coverage variance isn't too high
+        inputs:
+          checkCoverage: true
+          coverageType: lines
+          allowCoverageVariance: true
+          coverageVariance: ${{ parameters.coverageVariance }}
+          coverageDeltaType: percentage
+          includePartiallySucceeded: false
+          baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
+          baseRepoId: ${{ parameters.baseRepoId }}
+          baseBranchRef: ${{ parameters.refBranch }}

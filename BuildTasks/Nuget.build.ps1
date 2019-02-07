@@ -54,7 +54,7 @@ task CreateNugetSpec -Inputs ("$BuildOutput\$ProjectName.psd1") -Outputs ("$Buil
     $null = $MetaDataElement.AppendChild($IdElement)
 
     $VersionElement = $doc.CreateNode("element", "version", $ns)
-    $VersionElement.InnerText = $ModuleData.ModuleVersion
+    $VersionElement.InnerText = $ModuleData.ModuleVersion + $ModulesData.PrivateData.PSData.Prerelease
     $null = $MetaDataElement.AppendChild($VersionElement)
 
     $TitleElement = $doc.CreateNode("element", "title", $ns)

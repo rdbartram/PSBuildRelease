@@ -99,7 +99,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
         RootModule        = "$ProjectName.psm1"
         RequiredModules   = ($RequiredModules | Sort-Object | Select-Object -Unique)
         FunctionsToExport = $PublicFunctions
-        ModuleVersion     = $env:GITVERSION_ASSEMBLYSEMVER
+        ModuleVersion     = $env:GITVERSION_MajorMinorPatch
         FileList          = (Get-ChildItem $BuildOutput -Recurse -File | ForEach-Object -Process { $_.FullName -Replace "$([regex]::Escape($BuildOutput))\\?" }) + "$ProjectName.psd1" | Select-Object -Unique
         ProjectUri        = (git remote get-url origin)
     }
@@ -107,24 +107,31 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
     (Get-Content (Join-Path $BuildRoot Manifest.json) | ConvertFrom-Json).ModuleInfo.PSObject.Properties.Foreach{ $manifestData += @{$_.Name = $_.Value} }
 
     New-ModuleManifest @manifestData
+
+    #####prerelease hack until powershell supports native
+
+    $ModuleData = ConvertFrom-Metadata $ModuleManifest
+    $ModuleData.PrivateData.PSData += @{ prerelease = "-$env:GITVERSION_NuGetPreReleaseTagV2" }
+    Export-Metadata -Path $ModuleManifest -InputObject $ModuleData
+
+    #####
 }
 
-Task PackageModule -inputs (Get-ChildItem $BuildOutput -Recurse -Exclude *.zip, *.nuspec -File) -outputs "$(Join-Path $BuildOutput "$($ProjectName)_$($env:GITVERSION_ASSEMBLYSEMVER).zip")" {
+Task PackageModule -inputs (Get-ChildItem $BuildOutput -Recurse -Exclude *.zip, *.nuspec -File) -outputs "$(Join-Path $BuildOutput "$($ProjectName)_$($env:GITVERSION_NuGetVersionV2).zip")" {
     Compress-Archive -Path (Get-ChildItem $BuildOutput -Exclude *.zip, *.nuspec) -DestinationPath $Outputs -Force
 }
 
-Task DownloadDependentModules -before Test -Inputs ("$BuildOutput\$ProjectName.psd1") -Outputs (Join-Path $ProjectPath Dependencies\) {
+Task DownloadDependentModules -Inputs ("$BuildOutput\$ProjectName.psd1") -Outputs (Join-Path $ProjectPath Dependencies\module.txt) {
 
-    $RequiredModules = (Import-PowerShellDataFile $inputs).RequiredModules | ? { $null -ne $_ } | ForEach-Object -Process {
-        @{ $_ = "Latest"}
-    }
+    New-Item -Path (Join-Path $ProjectPath Dependencies) -ItemType Directory -Force | Out-Null
 
-    $RequiredModules += @{
-        PSDependOptions = @{
-            Target    = '$DependencyFolder\Dependencies'
-            AddToPath = $true
+    (Import-PowerShellDataFile $inputs).RequiredModules | Where-Object { $null -ne $_ } | ForEach-Object -Process {
+        Find-Module $_ | Sort-Object Version -Descending | Select-Object -First 1 | ForEach-Object {
+            if ([System.Management.Automation.SemanticVersion](Get-Module $_.Name -listavailable).Version -lt [System.Management.Automation.SemanticVersion]$_.version) {
+                Save-Module $_.Name -path (Join-Path $ProjectPath Dependencies) -Repository $_.Repository
+            }
         }
     }
 
-    Invoke-PSDepend -InputObject $RequiredModules -Target (Join-Path $ProjectPath Dependencies) -Install -Confirm:$false
+    New-Item -Path $outputs -ItemType File -Force | Out-Null
 }
