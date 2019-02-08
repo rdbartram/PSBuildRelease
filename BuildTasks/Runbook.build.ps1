@@ -4,11 +4,12 @@ Param (
     $ProjectPath = (property ProjectPath $BuildRoot)
 )
 
-task incrementscriptversion -Inputs (Get-ChildItem -Path $ProjectPath\* -Include "*.ps1") {
+task IncrementScriptVersion -Inputs (Get-ChildItem -Path $ProjectPath\* -Include "*.ps1") {
 
     Write-Host ("Updating Runbook revision to '{0}' ..." -f $env:GITVERSION_MajorMinorPatch)
-    $Inputs | ForEach-Object -Process {
-        Update-ScriptFileInfo -Path $_ -Version $env:GITVERSION_MajorMinorPatch
+
+    foreach ($inputArg in $Inputs) {
+        Update-ScriptFileInfo -Path $inputArg -Version $env:GITVERSION_MajorMinorPatch
     }
 }
 
@@ -16,18 +17,19 @@ task DownloadRunbookDependentModules -Inputs (Get-ChildItem -Path $ProjectPath\*
 
     New-Item -Path (Join-Path $ProjectPath Dependencies) -ItemType Directory -Force | Out-Null
 
-    $Modules = @()
-    $Inputs.Foreach{
-        $Manifest = Test-ScriptFileInfo $_
+    $modules = @()
+    foreach ($inputArg in $Inputs) {
+        $manifest = Test-ScriptFileInfo $inputArg
 
-        $Modules += $Manifest.RequiredModules
+        $modules += $manifest.Requiredmodules
     }
 
-    $Modules | Select-Object -Unique | Where-Object { $null -ne $_ } | ForEach-Object -Process {
-        Find-Module $_ | Sort-Object Version -Descending | Select-Object -First 1 | ForEach-Object {
-            if ([System.Management.Automation.SemanticVersion](Get-Module $_.Name -listavailable).Version -lt [System.Management.Automation.SemanticVersion]$_.version) {
-                Save-Module $_.Name -path (Join-Path $ProjectPath Dependencies) -Repository $_.Repository
-            }
+    $uniqueModules = $modules | Select-Object -Unique | Where-Object { $null -ne $_ }
+    foreach ($uniqueModule in $uniqueModules) {
+        $availableModule = Find-Module $uniqueModule | Sort-Object Version -Descending | Select-Object -First 1
+
+        if ([System.Management.Automation.SemanticVersion](Get-Module $availableModule.Name -listavailable).Version -lt [System.Management.Automation.SemanticVersion]$availableModule.version) {
+            Save-Module $availableModule.Name -path (Join-Path $ProjectPath Dependencies) -Repository $availableModule.Repository
         }
     }
 

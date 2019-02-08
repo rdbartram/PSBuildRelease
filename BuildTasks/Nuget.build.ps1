@@ -25,92 +25,92 @@ param (
 )
 
 task UpdateSignature {
-    Get-ChildItem $BuildOutput -Include *.psm1, *.ps1, *.psd1 | ForEach-Object -Process {
+    $powerShellFiles = Get-ChildItem $BuildOutput -Include *.psm1, *.ps1, *.psd1
+    foreach ($powerShellFile in $powerShellFiles) {
         if ($CounterSign.IsPresent) {
-            Set-AuthenticodeSignature $_ -Certificate $cert -TimestampServer $TimestampServer -Confirm:$false
+            Set-AuthenticodeSignature $powerShellFile -Certificate $Cert -TimestampServer $TimestampServer -Confirm:$false
         } else {
-            Set-AuthenticodeSignature $_ -Certificate $cert -Confirm:$false
+            Set-AuthenticodeSignature $powerShellFile -Certificate $Cert -Confirm:$false
         }
     }
 }
 
 task CreateNugetSpec -Inputs ("$BuildOutput\$ProjectName.psd1") -Outputs ("$BuildOutput\$ProjectName.nuspec") {
-    $ModuleData = Import-PowerShellDataFile $Inputs
+    $moduleData = Import-PowerShellDataFile $Inputs
 
-    [xml]$Doc = New-Object System.Xml.XmlDocument
+    [xml]$doc = New-Object System.Xml.XmlDocument
 
-    $dec = $Doc.CreateXmlDeclaration("1.0", "UTF-8", $null)
-    $null = $Doc.AppendChild($dec)
+    $dec = $doc.CreateXmlDeclaration("1.0", "UTF-8", $null)
+    $null = $doc.AppendChild($dec)
 
     $ns = "http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd"
 
-    $PackageElement = $doc.CreateNode("element", "package", $ns)
+    $packageElement = $doc.CreateNode("element", "package", $ns)
 
     # metadata
-    $MetaDataElement = $doc.CreateNode("element", "metadata", $ns)
+    $metaDataElement = $doc.CreateNode("element", "metadata", $ns)
 
-    $IdElement = $doc.CreateNode("element", "id", $ns)
-    $IdElement.InnerText = $ProjectName
-    $null = $MetaDataElement.AppendChild($IdElement)
+    $idElement = $doc.CreateNode("element", "id", $ns)
+    $idElement.InnerText = $ProjectName
+    $null = $metaDataElement.AppendChild($idElement)
 
-    $VersionElement = $doc.CreateNode("element", "version", $ns)
-    $VersionElement.InnerText = $ModuleData.ModuleVersion + $ModulesData.PrivateData.PSData.Prerelease
-    $null = $MetaDataElement.AppendChild($VersionElement)
+    $versionElement = $doc.CreateNode("element", "version", $ns)
+    $versionElement.InnerText = $moduleData.ModuleVersion + $ModulesData.PrivateData.PSData.Prerelease
+    $null = $metaDataElement.AppendChild($versionElement)
 
-    $TitleElement = $doc.CreateNode("element", "title", $ns)
-    $TitleElement.InnerText = $ProjectName
-    $null = $MetaDataElement.AppendChild($TitleElement)
+    $titleElement = $doc.CreateNode("element", "title", $ns)
+    $titleElement.InnerText = $ProjectName
+    $null = $metaDataElement.AppendChild($titleElement)
 
-    $Authors = $doc.CreateNode("element", "authors", $ns)
-    $Authors.InnerText = $ModuleData.Author
-    $null = $MetaDataElement.AppendChild($Authors)
+    $authorsElement = $doc.CreateNode("element", "authors", $ns)
+    $authorsElement.InnerText = $moduleData.Author
+    $null = $metaDataElement.AppendChild($authors)
 
-    $OwnersElement = $doc.CreateNode("element", "owners", $ns)
-    $OwnersElement.InnerText = $ModuleData.Author
-    $null = $MetaDataElement.AppendChild($OwnersElement)
+    $ownersElement = $doc.CreateNode("element", "owners", $ns)
+    $ownersElement.InnerText = $moduleData.Author
+    $null = $metaDataElement.AppendChild($ownersElement)
 
-    $ProjectURLElement = $doc.CreateNode("element", "projectUrl", $ns)
-    $ProjectURLElement.InnerText = $ModuleData.PrivateData.PSData.ProjectUri
-    $null = $MetaDataElement.AppendChild($ProjectURLElement)
+    $projectURLElement = $doc.CreateNode("element", "projectUrl", $ns)
+    $projectURLElement.InnerText = $moduleData.PrivateData.PSData.ProjectUri
+    $null = $metaDataElement.AppendChild($projectURLElement)
 
     $requireLicenseAcceptanceElement = $doc.CreateNode("element", "requireLicenseAcceptance", $ns)
     $requireLicenseAcceptanceElement.InnerText = $false.ToString().ToLower()
-    $null = $MetaDataElement.AppendChild($requireLicenseAcceptanceElement)
+    $null = $metaDataElement.AppendChild($requireLicenseAcceptanceElement)
 
     $descriptionElement = $doc.CreateNode("element", "description", $ns)
-    $descriptionElement.InnerText = $ModuleData.description
-    $null = $MetaDataElement.AppendChild($descriptionElement)
+    $descriptionElement.InnerText = $moduleData.description
+    $null = $metaDataElement.AppendChild($descriptionElement)
 
     $summaryElement = $doc.CreateNode("element", "summary", $ns)
-    $summaryElement.InnerText = $ModuleData.Description
-    $null = $MetaDataElement.AppendChild($summaryElement)
+    $summaryElement.InnerText = $moduleData.Description
+    $null = $metaDataElement.AppendChild($summaryElement)
 
     $tagsElement = $doc.CreateNode("element", "tags", $ns)
-    $tagsElement.InnerText = $ModuleData.PrivateData.PSData.Tags
-    $null = $MetaDataElement.AppendChild($tagsElement)
+    $tagsElement.InnerText = $moduleData.PrivateData.PSData.Tags
+    $null = $metaDataElement.AppendChild($tagsElement)
 
     $languageElement = $doc.CreateNode("element", "language", $ns)
     $languageElement.InnerText = "en-US"
-    $null = $MetaDataElement.AppendChild($languageElement)
+    $null = $metaDataElement.AppendChild($languageElement)
 
-    $null = $PackageElement.AppendChild($MetaDataElement)
+    $null = $packageElement.AppendChild($metaDataElement)
 
     $filelistElement = $doc.CreateNode("element", "files", $ns)
 
-    $ModuleData.FileList | ForEach-Object -Process {
+    foreach ($file in $moduleData.FileList) {
         $fileElement = $doc.CreateNode("element", "file", $ns)
         $xmlSrc = $doc.CreateAttribute('src')
-        $xmlSrc.Value = (Join-Path $BuildOutput $_)
+        $xmlSrc.Value = (Join-Path $BuildOutput $file)
         $xmlTarget = $doc.CreateAttribute('target')
-        $xmlTarget.Value = $_
+        $xmlTarget.Value = $file
         $null = $fileElement.Attributes.Append($xmlSrc)
         $null = $fileElement.Attributes.Append($xmlTarget)
-
         $null = $filelistElement.AppendChild($fileElement)
     }
 
-    $null = $PackageElement.AppendChild($filelistElement)
-    $null = $Doc.AppendChild($PackageElement)
+    $null = $packageElement.AppendChild($filelistElement)
+    $null = $doc.AppendChild($packageElement)
 
-    $Doc.Save($outputs)
+    $doc.Save($outputs)
 }

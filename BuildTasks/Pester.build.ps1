@@ -9,10 +9,12 @@ param (
 )
 
 task Test {
-    $PathsToCover = @()
-    "$ProjectPath\Classes\*.ps1", "$ProjectPath\Private\*.ps1", "$ProjectPath\Public\*.ps1" | % {
+    $pathsToCover = @()
+    $filters = "$ProjectPath\Classes\*.ps1", "$ProjectPath\Private\*.ps1", "$ProjectPath\Public\*.ps1"
+
+    foreach ($filter in $filters) {
         if (Test-Path $_) {
-            $PathsToCover += $_
+            $pathsToCover += $filter
         }
     }
 
@@ -22,7 +24,7 @@ task Test {
             IncludeVSCodeMarker = $true
         }
         ExcludeTag   = $ExcludedTag
-        CodeCoverage = $PathsToCover
+        CodeCoverage = $pathsToCover
     }
 
     if ($host.Version -gt [system.version]"6.0") {
@@ -44,7 +46,7 @@ task Test {
 }
 
 task RunbookTest {
-    $PathsToCover = @("$ProjectPath\*.ps1")
+    $pathsToCover = @("$ProjectPath\*.ps1")
 
     $pesterArgs = @{
         PassThru     = $true
@@ -52,7 +54,7 @@ task RunbookTest {
             IncludeVSCodeMarker = $true
         }
         ExcludeTag   = @('alpha')
-        CodeCoverage = $PathsToCover
+        CodeCoverage = $pathsToCover
     }
 
     if ($host.Version -gt [system.version]"6.0") {
@@ -65,11 +67,7 @@ task RunbookTest {
     [void] $pesterArgs.Add('OutputFile', "$ProjectPath\TEST-Results.xml")
 
     [void] $pesterArgs.Add('CodeCoverageOutputFileFormat', 'JaCoCo')
-<<<<<<< HEAD
     [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage-$($host.Version).xml")
-=======
-    [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage-Results.xml")
->>>>>>> master
 
     $result = Invoke-Pester @pesterArgs
     if ($result.FailedCount -gt 0) {

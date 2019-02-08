@@ -20,34 +20,40 @@ task CompileClasses @{
         "$BuildOutput\$ProjectName-Classes.psm1"
     }
     Jobs    = {
-        @(
+        $files = @(
             @{file = "attributes.psm1"; filter = "*attribute.psm1"},
-            @{ file = "$ProjectName-Classes.psm1"; filter = "*.psm1"; exclude = "*attribute.psm1"; DependantModules = @(".\attributes.psm1") }
-        ) | ForEach-Object -Process {
+            @{file = "$ProjectName-Classes.psm1"; filter = "*.psm1"; exclude = "*attribute.psm1"; DependantModules = @(".\attributes.psm1") }
+        )
 
-            $ClassScript = @()
-            $_["DependantModules"] | Where-Object -FilterScript {
+        foreach ($file in $files) {
+
+            $classScript = @()
+            $dependentModules = $file["DependantModules"] | Where-Object -FilterScript {
                 $null -ne $_ -and (Test-Path $_)
-            } | ForEach-Object -Process {
-                $ClassScript += "using module $_"
+            }
+
+            foreach ($dependentModule in $dependentModules) {
+                $classScript += "using module $dependentModule"
             }
 
             $i = 0
             # Gather all classes
-            $ClassesToImport = Get-ChildItem $ProjectPath\Classes -filter $_["Filter"] -Exclude $_["Exclude"] -Recurse
+            $classesToImport = Get-ChildItem $ProjectPath\Classes -filter $file["Filter"] -Exclude $file["Exclude"] -Recurse
 
             # Limit to 10 loops in case of infinite nested classes
-            while ($ClassesToImport -ne $null -and $i++ -lt 10) {
-                $ClassesToImport | Select-Object -ExpandProperty Fullname -PipelineVariable Path | ForEach-Object -Process {
+            while ($classesToImport -ne $null -and $i++ -lt 10) {
+                $classPaths = $classesToImport | Select-Object -ExpandProperty Fullname
+
+                foreach ($classPath in $classPaths) {
                     try {
                         # Remove usings and test class can be imported. In failure, catch will be called
-                        $ParsedClassFile = ((Get-Content $Path) -notmatch '^using module \.*.\\') -join '
+                        $parsedClassFile = ((Get-Content $classPath) -notmatch '^using module \.*.\\') -join '
 '
-                        . ([scriptblock]::create($ParsedClassFile))
+                        . ([scriptblock]::create($parsedClassFile))
 
-                        # Add class content to output variable and remove class from ClassesToImport
-                        $ClassScript += $ParsedClassFile
-                        $ClassesToImport = $ClassesToImport | Where-Object { $_.fullname -ne $Path }
+                        # Add class content to output variable and remove class from classesToImport
+                        $classScript += $parsedClassFile
+                        $classesToImport = $classesToImport | Where-Object { $classPath.fullname -ne $classPath }
                     } catch {}
                 }
             }
@@ -58,9 +64,9 @@ task CompileClasses @{
             }
 
             # Write compiled classes to output file
-            if ($ClassScript.count -ne 0) {
-                New-Item (Join-Path $BuildOutput $_["File"]) -Force | Out-Null
-                $ClassScript | Set-Content (Join-Path $BuildOutput $_["File"]) -Force
+            if ($classScript.count -ne 0) {
+                New-Item (Join-Path $BuildOutput $file["File"]) -Force | Out-Null
+                $classScript | Set-Content (Join-Path $BuildOutput $file["File"]) -Force
             }
         }
     }

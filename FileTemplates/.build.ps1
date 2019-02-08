@@ -30,31 +30,6 @@ Param (
     $ResolveDependency
 )
 
-process {
-    if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
-        $PSBoundParameters.Remove("ResolveDependency") | Out-Null
-        Invoke-Build $Tasks $MyInvocation.MyCommand.Path @PSBoundParameters
-        return
-    }
-
-    task ResolveDependencies {
-        Write-Host "Resolving Dependencies... [this can take a moment]"
-        $Params = @{}
-        if ($PSboundParameters.ContainsKey('verbose')) {
-            $Params.Add('verbose', $verbose)
-        }
-        Resolve-Dependency @Params
-    }
-
-    Get-Item $PSScriptRoot\.build\* -Include *.ps1 | Where-Object -FilterScript {
-        $null -ne $_
-    } | Foreach-Object -Process {
-        "Importing file $($_.BaseName)" | Write-Verbose
-        . $_.FullName
-    }
-}
-
-
 begin {
     Import-Module Microsoft.PowerShell.Utility
     $oldpaths = $env:PSModulePath
@@ -65,9 +40,11 @@ begin {
         "C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules"
     ) -join ';'
 
-    (Join-Path $PSScriptRoot "Dependencies"), (Join-Path $PSScriptRoot "src\Dependencies") | Foreach-Object {
-        if(-not (test-path $_ -PathType Container)){
-            New-Item $_ -Force -ItemType Directory | Out-Null
+    $dependencyPaths = (Join-Path $PSScriptRoot "Dependencies"), (Join-Path $PSScriptRoot "src\Dependencies")
+
+    foreach ($dependencyPath in $dependencyPaths) {
+        if(-not (test-path $dependencyPath -PathType Container)){
+            New-Item $dependencyPath -Force -ItemType Directory | Out-Null
         }
     }
 
@@ -85,35 +62,35 @@ begin {
                 force          = $true
                 ForceBootstrap = $true
             }
-            if ($PSBoundParameters.ContainsKey('verbose')) { $providerBootstrapParams.add('verbose', $verbose)}
+            if ($PSBoundParameters.ContainsKey('Verbose')) { $providerBootstrapParams.add('Verbose', $Verbose)}
             if ($GalleryProxy) { $providerBootstrapParams.Add('Proxy', $GalleryProxy) }
             $null = Install-PackageProvider @providerBootstrapParams
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
         }
 
         if (!(Get-Module -Listavailable PSDepend)) {
-            Write-verbose "BootStrapping PSDepend"
-            "Parameter $BuildOutput"| Write-verbose
-            $SavePSDependParams = @{
+            Write-Verbose "BootStrapping PSDepend"
+            "Parameter $BuildOutput"| Write-Verbose
+            $savePSDependParams = @{
                 Name = 'PSDepend'
                 Path = "$PSScriptRoot\Dependencies"
             }
-            if ($PSBoundParameters.ContainsKey('verbose')) { $SavePSDependParams.add('verbose', $verbose)}
-            if ($GalleryRepository) { $SavePSDependParams.Add('Repository', $GalleryRepository) }
-            if ($GalleryProxy) { $SavePSDependParams.Add('Proxy', $GalleryProxy) }
-            if ($GalleryCredential) { $SavePSDependParams.Add('ProxyCredential', $GalleryCredential) }
-            Save-Module @SavePSDependParams
+            if ($PSBoundParameters.ContainsKey('Verbose')) { $savePSDependParams.add('Verbose', $Verbose)}
+            if ($GalleryRepository) { $savePSDependParams.Add('Repository', $GalleryRepository) }
+            if ($GalleryProxy) { $savePSDependParams.Add('Proxy', $GalleryProxy) }
+            if ($GalleryCredential) { $savePSDependParams.Add('ProxyCredential', $GalleryCredential) }
+            Save-Module @savePSDependParams
         }
 
-        $DependencyInputObject = Import-PowerShellDataFile (Join-Path $PSScriptRoot "PSDepend.build.psd1")
+        $dependencyInputObject = Import-PowerShellDataFile (Join-Path $PSScriptRoot "PSDepend.build.psd1")
 
         if ($null -ne $env:SYSTEM_ACCESSTOKEN) {
-            $DependencyInputObject.BR.Name = $DependencyInputObject.BR.Name.Replace("https://", "https://$env:BuildServiceAccountId:$env:SYSTEM_ACCESSTOKEN`@")
+            $dependencyInputObject.BR.Name = $dependencyInputObject.BR.Name.Replace("https://", "https://$env:BuildServiceAccountId:$env:SYSTEM_ACCESSTOKEN`@")
         }
 
         $PSDependParams = @{
             Force       = $true
-            InputObject = $DependencyInputObject
+            InputObject = $dependencyInputObject
             Install     = $true
             Target      = "$PSScriptRoot\Dependencies"
         }
@@ -130,11 +107,34 @@ begin {
 
     if ($ResolveDependency) {
         Write-Host "Resolving Dependencies... [this can take a moment]"
-        $Params = @{}
-        if ($PSboundParameters.ContainsKey('verbose')) {
-            $Params.Add('verbose', $verbose)
+        $params = @{}
+        if ($PSboundParameters.ContainsKey('Verbose')) {
+            $params.Add('Verbose', $Verbose)
         }
-        Resolve-Dependency @Params
+        Resolve-Dependency @params
+    }
+}
+
+process {
+    if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
+        $PSBoundParameters.Remove("ResolveDependency") | Out-Null
+        Invoke-Build $Tasks $MyInvocation.MyCommand.Path @PSBoundParameters
+        return
+    }
+
+    task ResolveDependencies {
+        Write-Host "Resolving Dependencies... [this can take a moment]"
+        $params = @{}
+        if ($PSboundParameters.ContainsKey('Verbose')) {
+            $params.Add('Verbose', $Verbose)
+        }
+        Resolve-Dependency @params
+    }
+
+    $buildFiles = Get-Item $PSScriptRoot\.build\* -Include *.ps1
+    foreach ($buildFile in $buildFiles){
+        "Importing file $($buildFile.BaseName)" | Write-Verbose
+        . $buildFile.FullName
     }
 }
 
