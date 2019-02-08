@@ -1,0 +1,16 @@
+resources:
+  repositories:
+    - repository: templates # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#repository-resource
+      type: github
+      name: rdbartram/PSBuildRelease
+      ref: refs/heads/master
+      endpoint: rdbartram
+
+jobs:
+  - template: Yaml Build Defintions/ModuleTest.yml@templates # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#job-templates
+    parameters:
+      baseRepoId: user/Repo     # ID of the repo targeted by the build definition
+      baseBuildDefinitionId: 1
+      pwsh: false               # Utilizes PowerShell Core
+      coverageThreshold: 15     # Minimum Pester Coverage
+      moduleName: moduleName
