@@ -12,7 +12,7 @@ commit-message-incrementing: Enabled
 branches:
   master:
     mode: ContinuousDelivery
-    increment: Patch
+    increment: minor
     prevent-increment-of-merged-branch-version: false
     track-merge-target: false
   release:
@@ -48,7 +48,7 @@ branches:
   develop:
     mode: ContinuousDeployment
     tag: unstable
-    increment: Minor
+    increment: patch
     prevent-increment-of-merged-branch-version: false
     track-merge-target: true
 ignore:

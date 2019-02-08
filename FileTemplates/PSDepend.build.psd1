@@ -1,13 +1,13 @@
 @{
-    $RequiredModules += @{
-        PSDependOptions = @{
-            AddToPath = $true
-        }
+    PSDependOptions = @{
+        Target = '$DependencyFolder\Dependencies'
+        AddToPath = $true
     }
 
     pester          = 'latest'
     invokebuild     = 'latest'
     BuildHelpers    = 'latest'
+    Configuration   = 'latest'
 
     BuildFolder     = @{
         DependencyType = 'Command'

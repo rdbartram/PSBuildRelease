@@ -4,7 +4,7 @@ Param (
 
     [Parameter()]
     [string]
-    $ProjectName = "StoragePre2K12",
+    $ProjectName = (split-path (get-location) -leaf),
 
     [Parameter()]
     $ProjectPath = (Join-Path (Get-Location) "src"),
@@ -28,9 +28,49 @@ Param (
     [Parameter()]
     [switch]
     $ResolveDependency
-    )
+)
+
+process {
+    if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
+        $PSBoundParameters.Remove("ResolveDependency") | Out-Null
+        Invoke-Build $Tasks $MyInvocation.MyCommand.Path @PSBoundParameters
+        return
+    }
+
+    task ResolveDependencies {
+        Write-Host "Resolving Dependencies... [this can take a moment]"
+        $Params = @{}
+        if ($PSboundParameters.ContainsKey('verbose')) {
+            $Params.Add('verbose', $verbose)
+        }
+        Resolve-Dependency @Params
+    }
+
+    Get-Item $PSScriptRoot\.build\* -Include *.ps1 | Where-Object -FilterScript {
+        $null -ne $_
+    } | Foreach-Object -Process {
+        "Importing file $($_.BaseName)" | Write-Verbose
+        . $_.FullName
+    }
+}
+
 
 begin {
+    Import-Module Microsoft.PowerShell.Utility
+    $oldpaths = $env:PSModulePath
+    $env:PSModulePath = @(
+        (Join-Path $PSScriptRoot "Dependencies"),
+        (Join-Path $PSScriptRoot "src\Dependencies"),
+        "C:\WINDOWS\System32\WindowsPowerShell\v1.0",
+        "C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules"
+    ) -join ';'
+
+    (Join-Path $PSScriptRoot "Dependencies"), (Join-Path $PSScriptRoot "src\Dependencies") | Foreach-Object {
+        if(-not (test-path $_ -PathType Container)){
+            New-Item $_ -Force -ItemType Directory | Out-Null
+        }
+    }
+
     if (![io.path]::IsPathRooted($BuildOutput)) {
         $BuildOutput = Join-Path -Path $PSScriptRoot -ChildPath $BuildOutput
     }
@@ -39,7 +79,7 @@ begin {
         [CmdletBinding()]
         param()
 
-        if (!($NoNuget.IsPresent) -and !(Get-PackageProvider -Name NuGet -ForceBootstrap)) {
+        if ($NoNuget.IsPresent -eq $false -and !(Get-PackageProvider -Name NuGet -ForceBootstrap)) {
             $providerBootstrapParams = @{
                 Name           = 'nuget'
                 force          = $true
@@ -51,21 +91,18 @@ begin {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
         }
 
-        if (!(Get-Module -ListAvailable PSDepend)) {
+        if (!(Get-Module -Listavailable PSDepend)) {
             Write-verbose "BootStrapping PSDepend"
             "Parameter $BuildOutput"| Write-verbose
-            $InstallPSDependParams = @{
-                Name         = 'PSDepend'
-                AllowClobber = $true
-                Confirm      = $false
-                Force        = $true
-                Scope        = 'CurrentUser'
+            $SavePSDependParams = @{
+                Name = 'PSDepend'
+                Path = "$PSScriptRoot\Dependencies"
             }
-            if ($PSBoundParameters.ContainsKey('verbose')) { $InstallPSDependParams.add('verbose', $verbose)}
-            if ($GalleryRepository) { $InstallPSDependParams.Add('Repository', $GalleryRepository) }
-            if ($GalleryProxy) { $InstallPSDependParams.Add('Proxy', $GalleryProxy) }
-            if ($GalleryCredential) { $InstallPSDependParams.Add('ProxyCredential', $GalleryCredential) }
-            Install-Module @InstallPSDependParams
+            if ($PSBoundParameters.ContainsKey('verbose')) { $SavePSDependParams.add('verbose', $verbose)}
+            if ($GalleryRepository) { $SavePSDependParams.Add('Repository', $GalleryRepository) }
+            if ($GalleryProxy) { $SavePSDependParams.Add('Proxy', $GalleryProxy) }
+            if ($GalleryCredential) { $SavePSDependParams.Add('ProxyCredential', $GalleryCredential) }
+            Save-Module @SavePSDependParams
         }
 
         $DependencyInputObject = Import-PowerShellDataFile (Join-Path $PSScriptRoot "PSDepend.build.psd1")
@@ -82,8 +119,8 @@ begin {
         }
 
         ##### HACK for psdepend #####
-        $map = join-path (module psdepend -Listavailable).ModuleBase "psdependmap.psd1"
-        $newmap = (gc $map) -replace "Supports = 'windows'$", "Supports = 'windows', 'core'"
+        $map = join-path (Get-Module psdepend -Listavailable)[0].ModuleBase "psdependmap.psd1"
+        $newmap = (Get-Content $map) -replace "Supports = 'windows'$", "Supports = 'windows', 'core'"
         Set-content -path $map -Value $newmap -Force
         #############################
 
@@ -101,17 +138,6 @@ begin {
     }
 }
 
-process {
-    if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
-        $PSBoundParameters.Remove("ResolveDependency")
-        Invoke-Build $Tasks $MyInvocation.MyCommand.Path @PSBoundParameters
-        return
-    }
-
-    Get-Item $PSScriptRoot\.build\* -Include *.ps1 | Where-Object -FilterScript {
-        $null -ne $_
-    } | Foreach-Object -Process {
-        "Importing file $($_.BaseName)" | Write-Verbose
-        . $_.FullName
-    }
+end {
+    $env:PSModulePath = $oldpaths
 }
