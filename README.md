@@ -52,9 +52,16 @@ Check the template files contained in this repository for help.
 After configuring according to [Installation](#Installation) run your Azure Pipelines build process.
 
 ### Locally
+To build locally you will require PowerShell Core. This has no impact on the actual usage of the module or the tests, but it required for things such as semanticversioning class, New-ModuleManifest improvements etc.
 
 ```powershell
-Invoke-Build -ResolveDependency
+Invoke-Build -Tasks CreateModuleManifest, DownloadDependentModules -ResolveDependency
+```
+
+Once the module is built, you can run the tests in either PowerShell Core or WinPS as necessary.
+
+```powershell
+Invoke-Build -Tasks Test
 ```
 
 ## Contributing
