@@ -40,15 +40,46 @@ task CompileClasses @{
             # Gather all classes
             $classesToImport = Get-ChildItem $ProjectPath\Classes -filter $file["Filter"] -Exclude $file["Exclude"] -Recurse
 
+            $usings = @()
+            $classPaths = $classesToImport.Fullname
+
+            # Loop each class and remove usings whilst cataloging them to be added at the top of compiled module
+            foreach ($classPath in $classPaths) {
+                $path = $classPath.FullName
+                $usingRaws = (Get-Content $path) -match 'using (module)|(namespace)'
+
+                foreach ($usingRaw in $usingRaws) {
+                    # matching is as following
+                    #
+                    # if using is already in cataloged list, ignore
+                    # if using resolves to a module outside of the current project then add to catalog
+                    # if a using resolves to a binary local to module then add to catalog
+                    # if a namespace then add to catalog
+                    if ($usings -contains $usingRaw) {
+                    } elseif ($usingRaw -match 'using module [^.]') {
+                        Add-Content -Path $classPath -Value $usingRaw -Force
+                    } elseif (
+                        $usingRaw -match 'using module (\.{0,2}\\.*binaries)\\(.+)' -and
+                        (Resolve-Path (Join-Path $ProjectPath "Binaries")).ToString() -eq (Resolve-Path (Join-Path (Split-Path $path -Parent) $matches[1]).ToString())
+                    ) {
+                        Add-Content -Path $classPath -Value "using module .\Binaries\$($matches[2])" -Force
+                    } elseif ($usingRaw -match 'using namespace') {
+                        Add-Content -Path $classPath -Value $usingRaw -Force
+                    }
+                    $usings += $usingRaw
+                }
+            }
+
+            . ([scriptblock]::create($ClassScript))
+
             # Limit to 10 loops in case of infinite nested classes
             while ($classesToImport -ne $null -and $i++ -lt 10) {
-                $classPaths = $classesToImport | Select-Object -ExpandProperty Fullname
+                $classPaths = $classesToImport.Fullname
 
                 foreach ($classPath in $classPaths) {
                     try {
                         # Remove usings and test class can be imported. In failure, catch will be called
-                        $parsedClassFile = ((Get-Content $classPath) -notmatch '^using module \.*.\\') -join '
-'
+                        $parsedClassFile = ((Get-Content $classPath) -notmatch '(using (module)|(namespace))|#requires') -join [System.Environment]::newline
                         . ([scriptblock]::create($parsedClassFile))
 
                         # Add class content to output variable and remove class from classesToImport

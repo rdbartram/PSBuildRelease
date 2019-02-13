@@ -23,7 +23,7 @@ task BuildModule @{
 
         New-Item $moduleFile -Force | Out-Null
 
-        if ($null -ne (Get-Item classes\* -ErrorAction SilentlyContinue)) {
+        if ($null -ne (Get-Item $ProjectPath\classes\* -ErrorAction SilentlyContinue)) {
             Add-Content -Path $moduleFile -Value "using module .\$ProjectName-Classes.psm1" -Force
         }
 
@@ -55,11 +55,11 @@ task BuildModule @{
         }
 
         foreach ($functionFile in $functionFiles) {
-            Add-Content -Path $moduleFile -Value ((Get-Content $functionFile.FullName) -notmatch 'using (module)|(namespace)') -Force
+            Add-Content -Path $moduleFile -Value ((Get-Content $functionFile.FullName) -notmatch '(using (module)|(namespace))|#requires') -Force
         }
 
         $publicFunctions = @()
-        $publicFiles = Get-ChildItem $ProjectPath\Public\
+        $publicFiles = Get-ChildItem $ProjectPath\Public\ -Exclude "_root.ps1"
 
         foreach ($publicFile in $publicFiles) {
             $publicFunctions += $publicFile.BaseName
@@ -118,7 +118,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
     $manifestJson = Get-Content (Join-Path $BuildRoot Manifest.json) | ConvertFrom-Json
 
     foreach ($manifestProperty in $manifestJson.ModuleInfo.PSObject.Properties) {
-        $manifestData += @{$manifestProperty.Name = $manifestProperty.Value}
+        $manifestData[$manifestProperty.Name] = $manifestProperty.Value
     }
 
     New-ModuleManifest @manifestData
