@@ -118,10 +118,6 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
         $manifestData["ProjectUri"] = $projectUri
     }
 
-    if($ProjectUri = (git remote get-url origin)){
-        $manifestData["ProjectUri"] = $projectUri
-    }
-
     $manifestJson = Get-Content (Join-Path $BuildRoot Manifest.json) | ConvertFrom-Json
 
     foreach ($manifestProperty in $manifestJson.ModuleInfo.PSObject.Properties) {
