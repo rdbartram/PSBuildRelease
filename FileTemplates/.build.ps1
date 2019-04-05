@@ -4,7 +4,7 @@ Param (
 
     [Parameter()]
     [string]
-    $ProjectName = (split-path (get-location) -leaf),
+    $ProjectName = (Get-Content $PSScriptRoot\Manifest.json -Raw | ConvertFrom-Json).ModuleInfo.Name,
 
     [Parameter()]
     $ProjectPath = (Join-Path (Get-Location) "src"),
@@ -34,13 +34,17 @@ begin {
     Import-Module Microsoft.PowerShell.Utility
     $oldpaths = $env:PSModulePath
     $env:PSModulePath = @(
+        "C:\Program Files\PowerShell\6",
+        "C:\Program Files\PowerShell\6\Modules",
+        "C:\Program Files\PowerShell\6-preview",
+        "C:\Program Files\PowerShell\6-preview\Modules",
         (Join-Path $PSScriptRoot "Dependencies"),
         (Join-Path $PSScriptRoot "src\Dependencies"),
         "C:\WINDOWS\System32\WindowsPowerShell\v1.0",
         "C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules"
     ) -join ';'
 
-    $dependencyPaths = (Join-Path $PSScriptRoot "Dependencies"), (Join-Path $PSScriptRoot "src\Dependencies")
+    $dependencyPaths = (Join-Path $PSScriptRoot "Dependencies")
 
     foreach ($dependencyPath in $dependencyPaths) {
         if(-not (test-path $dependencyPath -PathType Container)){

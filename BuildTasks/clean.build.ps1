@@ -3,6 +3,10 @@ Param (
     [io.DirectoryInfo]
     $ProjectPath = (property ProjectPath $BuildRoot),
 
+    [parameter()]
+    [string]
+    $ProjectName = (property ProjectName $ProjectName),
+
     [string]
     $BuildOutput = (property BuildOutput 'C:\BuildOutput'),
 
@@ -12,23 +16,12 @@ Param (
 
 task Clean {
     $LineSeparation
-    "`t`t`t CLEAN UP"
+    "`t CLEAN UP"
     $LineSeparation
 
-    if (![io.path]::IsPathRooted($BuildOutput)) {
-        $BuildOutput = Join-Path -Path $ProjectPath.FullName -ChildPath $BuildOutput
-    }
-    if (Test-Path $BuildOutput) {
-        "Removing $BuildOutput\*"
-        Get-ChildItem .\BuildOutput\ -Exclude modules, README.md | Remove-Item -Force -Recurse
-    }
-
+    Get-ChildItem $BuildOutput | Remove-Item -Force -Recurse -Verbose -ErrorAction Stop
 }
 
-task CleanModule {
-    if (![io.path]::IsPathRooted($BuildOutput)) {
-        $BuildOutput = Join-Path -Path $ProjectPath.FullName -ChildPath $BuildOutput
-    }
-    "Removing $BuildOutput\*"
-    Get-ChildItem .\BuildOutput\ | Remove-Item -Force -Recurse -Verbose -ErrorAction Stop
+task CleanPackage -before PackageModule {
+    Get-ChildItem -Path $BuildOutput -Filter ('{0}_*.zip' -f $ProjectName) | Remove-Item  -Force -ErrorAction SilentlyContinue
 }

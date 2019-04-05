@@ -21,8 +21,8 @@ task CompileClasses @{
     }
     Jobs    = {
         $files = @(
-            @{file = "attributes.psm1"; filter = "*attribute.psm1"},
-            @{file = "$ProjectName-Classes.psm1"; filter = "*.psm1"; exclude = "*attribute.psm1"; DependantModules = @(".\attributes.psm1") }
+            @{file = "attributes.psm1"; filter = "*-attribute.psm1"},
+            @{file = "$ProjectName-Classes.psm1"; filter = "*.psm1"; exclude = "*-attribute.psm1"; DependantModules = @(".\attributes.psm1") }
         )
 
         foreach ($file in $files) {
@@ -45,7 +45,7 @@ task CompileClasses @{
 
             # Loop each class and remove usings whilst cataloging them to be added at the top of compiled module
             foreach ($classPath in $classPaths) {
-                $path = $classPath.FullName
+                $path = $classPath
                 $usingRaws = (Get-Content $path) -match 'using (module)|(namespace)'
 
                 foreach ($usingRaw in $usingRaws) {
@@ -79,12 +79,12 @@ task CompileClasses @{
                 foreach ($classPath in $classPaths) {
                     try {
                         # Remove usings and test class can be imported. In failure, catch will be called
-                        $parsedClassFile = ((Get-Content $classPath) -notmatch '(using (module)|(namespace))|#requires') -join [System.Environment]::newline
+                        $parsedClassFile = ((Get-Content $classPath) -notmatch 'using (module)|(namespace)') -join [System.Environment]::newline
                         . ([scriptblock]::create($parsedClassFile))
 
                         # Add class content to output variable and remove class from classesToImport
                         $classScript += $parsedClassFile
-                        $classesToImport = $classesToImport | Where-Object { $classPath.fullname -ne $classPath }
+                        $classesToImport = $classesToImport | Where-Object { $classPath -ne $classPath }
                     } catch {}
                 }
             }

@@ -12,7 +12,7 @@ param (
 )
 
 task BuildModule @{
-    before  = @("CreateModuleManifest", "PackageModule")
+    before  = @("CreateModuleManifest")
     inputs  = {
         Get-Item $ProjectPath\public\*, $ProjectPath\classes\*, $ProjectPath\private\* -ErrorAction SilentlyContinue
     }
@@ -28,7 +28,7 @@ task BuildModule @{
         }
 
         $usings = @()
-        $functionFiles = Get-ChildItem $ProjectPath\Private, $ProjectPath\Public
+        $functionFiles = Get-ChildItem $ProjectPath\Private, $ProjectPath\Public -ErrorAction SilentlyContinue
 
         foreach ($functionFile in $functionFiles) {
             $path = $functionFile.FullName
@@ -37,14 +37,14 @@ task BuildModule @{
             foreach ($usingRaw in $usingRaws) {
                 if ($usings -contains $usingRaw) {
                 } elseif ($usingRaw -match 'using module [^.]') {
-                    Add-Content -Path $functionFile -Value $usingRaw -Force
+                    Add-Content -Path $moduleFile -Value $usingRaw -Force
                 } elseif (
                     $usingRaw -match 'using module (\.{0,2}\\.*binaries)\\(.+)' -and
                     (Resolve-Path (Join-Path $ProjectPath "Binaries")).ToString() -eq (Resolve-Path (Join-Path (Split-Path $path -Parent) $matches[1]).ToString())
                 ) {
-                    Add-Content -Path $functionFile -Value "using module .\Binaries\$($matches[2])" -Force
+                    Add-Content -Path $moduleFile -Value "using module .\Binaries\$($matches[2])" -Force
                 } elseif ($usingRaw -match 'using namespace') {
-                    Add-Content -Path $functionFile -Value $usingRaw -Force
+                    Add-Content -Path $moduleFile -Value $usingRaw -Force
                 }
                 $usings += $usingRaw
             }
@@ -55,7 +55,7 @@ task BuildModule @{
         }
 
         foreach ($functionFile in $functionFiles) {
-            Add-Content -Path $moduleFile -Value ((Get-Content $functionFile.FullName) -notmatch '(using (module)|(namespace))|#requires') -Force
+            Add-Content -Path $moduleFile -Value ((Get-Content $functionFile.FullName) -notmatch 'using (module)|(namespace)') -Force
         }
 
         $publicFunctions = @()
@@ -78,7 +78,7 @@ task CopyStaticResources @{
     Jobs   = {
         $manifest = Get-Content "$BuildRoot\Manifest.json" -ea SilentlyContinue | ConvertFrom-Json
         foreach ($r in $manifest.StaticResources) {
-            Copy-Item (Join-Path $ProjectPath "$r\") $BuildOutput -Recurse -Force -ErrorAction SilentlyContinue
+            Copy-Item (Join-Path $ProjectPath "$r") $BuildOutput -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 }
@@ -112,7 +112,10 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
         FunctionsToExport = $publicFunctions
         ModuleVersion     = $env:GITVERSION_MajorMinorPatch
         FileList          = (Get-ChildItem $BuildOutput -Recurse -File | ForEach-Object -Process { $_.FullName -Replace "$([regex]::Escape($BuildOutput))\\?" }) + "$ProjectName.psd1" | Select-Object -Unique
-        ProjectUri        = (git remote get-url origin)
+    }
+
+    if($ProjectUri = (git remote get-url origin)){
+        $manifestData["ProjectUri"] = $projectUri
     }
 
     $manifestJson = Get-Content (Join-Path $BuildRoot Manifest.json) | ConvertFrom-Json
@@ -121,33 +124,40 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
         $manifestData[$manifestProperty.Name] = $manifestProperty.Value
     }
 
-    New-ModuleManifest @manifestData
+    $manifestData.remove("Name") | Out-Null
+
+    New-ModuleManifest @manifestData -ErrorAction stop
 
     #####prerelease hack until powershell supports native
 
-    $moduleData = ConvertFrom-Metadata $moduleManifest
-    $moduleData.PrivateData.PSData += @{ prerelease = "-$env:GITVERSION_NuGetPreReleaseTagV2" }
-    Export-Metadata -Path $moduleManifest -InputObject $moduleData
+    if($null -ne $env:GITVERSION_NuGetPreReleaseTagV2) {
+        $moduleData = ConvertFrom-Metadata $moduleManifest
+        $moduleData.PrivateData.PSData += @{ prerelease = "-$env:GITVERSION_NuGetPreReleaseTagV2" }
+        Export-Metadata -Path $moduleManifest -InputObject $moduleData
+    }
 
     #####
 }
 
-Task PackageModule -inputs (Get-ChildItem $BuildOutput -Recurse -Exclude *.zip, *.nuspec -File) -outputs "$(Join-Path $BuildOutput "$($ProjectName)_$($env:GITVERSION_NuGetVersionV2).zip")" {
-    Compress-Archive -Path (Get-ChildItem $BuildOutput -Exclude *.zip, *.nuspec) -DestinationPath $Outputs -Force
+Task PackageModule -inputs {Get-ChildItem $BuildOutput -Recurse -Exclude *.zip, *.nuspec -File} -Outputs (Join-Path -Path $BuildOutput -ChildPath ('{0}_{1}.zip' -f $ProjectName, $env:GITVERSION_NuGetVersionV2)) {
+    Compress-Archive -Path $BuildOutput\* -DestinationPath $Outputs -Force
 }
 
 Task DownloadDependentModules -Inputs ("$BuildOutput\$ProjectName.psd1") -Outputs (Join-Path $ProjectPath Dependencies\module.txt) {
 
-    New-Item -Path (Join-Path $ProjectPath Dependencies) -ItemType Directory -Force | Out-Null
+    $requiredModules = (Import-PowerShellDataFile $inputs).RequiredModules
 
-    $requiredModules = (Import-PowerShellDataFile $inputs).RequiredModules | Where-Object { $null -ne $_ }
-    foreach ($requiredModule in $requiredModules) {
-        $availableModule = Find-Module $requiredModule | Sort-Object Version -Descending | Select-Object -First 1
+    if ($requiredModule.count -gt 0) {
+        $uniqueModules = $requiredModule | Select-Object -Unique | Where-Object { $null -ne $_ }
+        New-Item -Path (Join-Path $ProjectPath Dependencies) -ItemType Directory -Force | Out-Null
+        foreach ($uniqueModule in $uniqueModules) {
+            $availableModule = Find-Module $uniqueModule | Sort-Object Version -Descending | Select-Object -First 1
 
-        if ([System.Management.Automation.SemanticVersion](Get-Module $availableModule.Name -listavailable).Version -lt [System.Management.Automation.SemanticVersion]$availableModule.version) {
-            Save-Module $availableModule.Name -path (Join-Path $ProjectPath Dependencies) -Repository $availableModule.Repository
+            if ([System.Management.Automation.SemanticVersion](Get-Module $availableModule.Name -listavailable).Version -lt [System.Management.Automation.SemanticVersion]$availableModule.version) {
+                Save-Module $availableModule.Name -path (Join-Path $ProjectPath Dependencies) -Repository $availableModule.Repository
+            }
         }
     }
 
-    New-Item -Path $Outputs -ItemType File -Force | Out-Null
+    New-Item -Path $outputs -ItemType File -Force | Out-Null
 }

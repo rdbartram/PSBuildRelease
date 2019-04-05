@@ -27,7 +27,7 @@ task Test {
         CodeCoverage = $pathsToCover
     }
 
-    if ($host.Version -gt [system.version]"6.0") {
+    if ($PSVersionTable.PSVersion -gt [system.version]"6.0") {
         $pesterArgs["ExcludeTag"] += "DesktopOnly"
     } else {
         $pesterArgs["ExcludeTag"] += "CoreOnly"
@@ -37,7 +37,7 @@ task Test {
     [void] $pesterArgs.Add('OutputFile', "$ProjectPath\TEST-Results.xml")
 
     [void] $pesterArgs.Add('CodeCoverageOutputFileFormat', 'JaCoCo')
-    [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage-$($host.Version).xml")
+    [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage-$($PSVersionTable.PSVersion).xml")
 
     $result = Invoke-Pester @pesterArgs
     if ($result.FailedCount -gt 0) {
@@ -57,7 +57,7 @@ task RunbookTest {
         CodeCoverage = $pathsToCover
     }
 
-    if ($host.Version -gt [system.version]"6.0") {
+    if ($PSVersionTable.PSVersion -gt [system.version]"6.0") {
         $pesterArgs["ExcludeTag"] += "DesktopOnly"
     } else {
         $pesterArgs["ExcludeTag"] += "CoreOnly"
@@ -67,7 +67,7 @@ task RunbookTest {
     [void] $pesterArgs.Add('OutputFile', "$ProjectPath\TEST-Results.xml")
 
     [void] $pesterArgs.Add('CodeCoverageOutputFileFormat', 'JaCoCo')
-    [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage-$($host.Version).xml")
+    [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage-$($PSVersionTable.PSVersion).xml")
 
     $result = Invoke-Pester @pesterArgs
     if ($result.FailedCount -gt 0) {

@@ -15,8 +15,6 @@ task IncrementScriptVersion -Inputs (Get-ChildItem -Path $ProjectPath\* -Include
 
 task DownloadRunbookDependentModules -Inputs (Get-ChildItem -Path $ProjectPath\* -Include "*.ps1") -Outputs (Join-Path $ProjectPath Dependencies\module.txt) {
 
-    New-Item -Path (Join-Path $ProjectPath Dependencies) -ItemType Directory -Force | Out-Null
-
     $modules = @()
     foreach ($inputArg in $Inputs) {
         $manifest = Test-ScriptFileInfo $inputArg
@@ -24,12 +22,15 @@ task DownloadRunbookDependentModules -Inputs (Get-ChildItem -Path $ProjectPath\*
         $modules += $manifest.Requiredmodules
     }
 
-    $uniqueModules = $modules | Select-Object -Unique | Where-Object { $null -ne $_ }
-    foreach ($uniqueModule in $uniqueModules) {
-        $availableModule = Find-Module $uniqueModule | Sort-Object Version -Descending | Select-Object -First 1
-
-        if ([System.Management.Automation.SemanticVersion](Get-Module $availableModule.Name -listavailable).Version -lt [System.Management.Automation.SemanticVersion]$availableModule.version) {
-            Save-Module $availableModule.Name -path (Join-Path $ProjectPath Dependencies) -Repository $availableModule.Repository
+    if ($modules.count -gt 0) {
+        $uniqueModules = $modules | Select-Object -Unique | Where-Object { $null -ne $_ }
+        New-Item -Path (Join-Path $ProjectPath Dependencies) -ItemType Directory -Force | Out-Null
+        foreach ($uniqueModule in $uniqueModules) {
+            $availableModule = Find-Module $uniqueModule | Sort-Object Version -Descending | Select-Object -First 1
+            
+            if ([System.Management.Automation.SemanticVersion](Get-Module $availableModule.Name -listavailable).Version -lt [System.Management.Automation.SemanticVersion]$availableModule.version) {
+                Save-Module $availableModule.Name -path (Join-Path $ProjectPath Dependencies) -Repository $availableModule.Repository
+            }
         }
     }
 

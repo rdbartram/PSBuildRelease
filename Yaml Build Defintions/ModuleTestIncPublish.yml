@@ -131,6 +131,7 @@ jobs:
     steps:
       - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
         displayName: Check Code Coverage Meets Minimum Requirement
+        timeoutInMinutes: 1
         inputs:
           checkCoverage: true
           coverageFailOption: fixed
@@ -143,6 +144,7 @@ jobs:
 
       - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@5
         displayName: Check Code Coverage variance isn't too high
+        timeoutInMinutes: 1
         inputs:
           checkCoverage: true
           coverageType: lines
