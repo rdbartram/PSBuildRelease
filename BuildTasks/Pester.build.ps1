@@ -13,7 +13,7 @@ task Test {
     $filters = "$ProjectPath\Classes\*.ps1", "$ProjectPath\Private\*.ps1", "$ProjectPath\Public\*.ps1"
 
     foreach ($filter in $filters) {
-        if (Test-Path $_) {
+        if (Test-Path (Split-Path $filter -Parent)) {
             $pathsToCover += $filter
         }
     }
