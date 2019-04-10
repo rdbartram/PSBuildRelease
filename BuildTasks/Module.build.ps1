@@ -114,7 +114,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
         FileList          = (Get-ChildItem $BuildOutput -Recurse -File | ForEach-Object -Process { $_.FullName -Replace "$([regex]::Escape($BuildOutput))\\?" }) + "$ProjectName.psd1" | Select-Object -Unique
     }
 
-    if($ProjectUri = (git remote get-url origin)){
+    if ($ProjectUri = (git.exe remote get-url origin)) {
         $manifestData["ProjectUri"] = $projectUri
     }
 
@@ -130,7 +130,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
 
     #####prerelease hack until powershell supports native
 
-    if($null -ne $env:GITVERSION_NuGetPreReleaseTagV2) {
+    if ($null -ne $env:GITVERSION_NuGetPreReleaseTagV2) {
         $moduleData = ConvertFrom-Metadata $moduleManifest
         $moduleData.PrivateData.PSData += @{ prerelease = "-$env:GITVERSION_NuGetPreReleaseTagV2" }
         Export-Metadata -Path $moduleManifest -InputObject $moduleData
@@ -151,10 +151,22 @@ Task DownloadDependentModules -Inputs ("$BuildOutput\$ProjectName.psd1") -Output
         $uniqueModules = $requiredModule | Select-Object -Unique | Where-Object { $null -ne $_ }
         New-Item -Path (Join-Path $ProjectPath Dependencies) -ItemType Directory -Force | Out-Null
         foreach ($uniqueModule in $uniqueModules) {
-            $availableModule = Find-Module $uniqueModule | Sort-Object Version -Descending | Select-Object -First 1
+            # Find module in PSGallery and create version object from string version
+            $foundModule = Find-Module $uniqueModule | Sort-Object Version -Descending | Select-Object -First 1
+            $foundVersion = $null
+            if (-not [System.Management.Automation.SemanticVersion]::TryParse($foundModule.Version, [ref]$foundVersion)) {
+                [System.Version]::TryParse($foundModule.Version, [ref]$foundVersion) | Out-Null
+            }
 
-            if ([System.Management.Automation.SemanticVersion](Get-Module $availableModule.Name -listavailable).Version -lt [System.Management.Automation.SemanticVersion]$availableModule.version) {
-                Save-Module $availableModule.Name -path (Join-Path $ProjectPath Dependencies) -Repository $availableModule.Repository
+            # Find locally installed module and create version object from string version
+            $availableVersionString = $availableVersion = (Get-Module $_.Name -ListAvailable).Version
+            if (-not [System.Management.Automation.SemanticVersion]::TryParse($availableVersionString, [ref]$availableVersion)) {
+                [System.Version]::TryParse($availableVersionString, [ref]$availableVersion) | Out-Null
+            }
+
+            # if've there is a newer version available, then download it
+            if ($availableVersion -lt $FoundVersion) {
+                Save-Module $foundModule.Name -path (Join-Path $ProjectPath Dependencies) -Repository $foundModule.Repository -AcceptLicense
             }
         }
     }

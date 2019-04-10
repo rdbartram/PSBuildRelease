@@ -1,3 +1,5 @@
+#requires -module PowershellGet
+
 Param (
     [Parameter(Position = 0)]
     $Tasks,
@@ -31,23 +33,19 @@ Param (
 )
 
 begin {
-    Import-Module Microsoft.PowerShell.Utility
+    Import-Module Microsoft.PowerShell.Utility, Microsoft.PowerShell.Security -ErrorAction SilentlyContinue
+    Get-PackageProvider | Out-Null
+
     $oldpaths = $env:PSModulePath
     $env:PSModulePath = @(
-        "C:\Program Files\PowerShell\6",
-        "C:\Program Files\PowerShell\6\Modules",
-        "C:\Program Files\PowerShell\6-preview",
-        "C:\Program Files\PowerShell\6-preview\Modules",
         (Join-Path $PSScriptRoot "Dependencies"),
-        (Join-Path $PSScriptRoot "src\Dependencies"),
-        "C:\WINDOWS\System32\WindowsPowerShell\v1.0",
-        "C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules"
+        (Join-Path $PSScriptRoot "src\Dependencies")
     ) -join ';'
 
     $dependencyPaths = (Join-Path $PSScriptRoot "Dependencies")
 
     foreach ($dependencyPath in $dependencyPaths) {
-        if(-not (test-path $dependencyPath -PathType Container)){
+        if (-not (Test-Path $dependencyPath -PathType Container)) {
             New-Item $dependencyPath -Force -ItemType Directory | Out-Null
         }
     }
@@ -60,13 +58,13 @@ begin {
         [CmdletBinding()]
         param()
 
-        if ($NoNuget.IsPresent -eq $false -and !(Get-PackageProvider -Name NuGet -ForceBootstrap)) {
+        if (-not $NoNuget.IsPresent -and !(Get-PackageProvider -Name NuGet -ForceBootstrap)) {
             $providerBootstrapParams = @{
                 Name           = 'nuget'
                 force          = $true
                 ForceBootstrap = $true
             }
-            if ($PSBoundParameters.ContainsKey('Verbose')) { $providerBootstrapParams.add('Verbose', $Verbose)}
+            if ($PSBoundParameters.ContainsKey('verbose')) { $providerBootstrapParams.add('verbose', $verbose) }
             if ($GalleryProxy) { $providerBootstrapParams.Add('Proxy', $GalleryProxy) }
             $null = Install-PackageProvider @providerBootstrapParams
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
@@ -74,35 +72,35 @@ begin {
 
         if (!(Get-Module -Listavailable PSDepend)) {
             Write-Verbose "BootStrapping PSDepend"
-            "Parameter $BuildOutput"| Write-Verbose
+            "Parameter $BuildOutput" | Write-Verbose
             $savePSDependParams = @{
-                Name = 'PSDepend'
+                Name = 'PSDepend', 'PowershellGet'
                 Path = "$PSScriptRoot\Dependencies"
             }
-            if ($PSBoundParameters.ContainsKey('Verbose')) { $savePSDependParams.add('Verbose', $Verbose)}
+            if ($PSBoundParameters.ContainsKey('verbose')) { $savePSDependParams.add('verbose', $verbose) }
             if ($GalleryRepository) { $savePSDependParams.Add('Repository', $GalleryRepository) }
             if ($GalleryProxy) { $savePSDependParams.Add('Proxy', $GalleryProxy) }
             if ($GalleryCredential) { $savePSDependParams.Add('ProxyCredential', $GalleryCredential) }
             Save-Module @savePSDependParams
         }
 
-        $dependencyInputObject = Import-PowerShellDataFile (Join-Path $PSScriptRoot "PSDepend.build.psd1")
+        $DependencyInputObject = Import-PowerShellDataFile (Join-Path $PSScriptRoot "PSDepend.build.psd1")
 
         if ($null -ne $env:SYSTEM_ACCESSTOKEN) {
-            $dependencyInputObject.BR.Name = $dependencyInputObject.BR.Name.Replace("https://", "https://$env:BuildServiceAccountId:$env:SYSTEM_ACCESSTOKEN`@")
+            $DependencyInputObject.BR.Name = $DependencyInputObject.BR.Name.Replace("https://", "https://$env:BuildServiceAccountId:$env:SYSTEM_ACCESSTOKEN`@")
         }
 
         $PSDependParams = @{
             Force       = $true
-            InputObject = $dependencyInputObject
+            InputObject = $DependencyInputObject
             Install     = $true
             Target      = "$PSScriptRoot\Dependencies"
         }
 
         ##### HACK for psdepend #####
-        $map = join-path (Get-Module psdepend -Listavailable)[0].ModuleBase "psdependmap.psd1"
+        $map = Get-Item "$PSScriptRoot\Dependencies\PSDepend\*\PSDependMap.psd1"
         $newmap = (Get-Content $map) -replace "Supports = 'windows'$", "Supports = 'windows', 'core'"
-        Set-content -path $map -Value $newmap -Force
+        Set-Content -path $map -Value $newmap -Force
         #############################
 
         $null = Invoke-PSDepend @PSDependParams
@@ -111,11 +109,11 @@ begin {
 
     if ($ResolveDependency) {
         Write-Host "Resolving Dependencies... [this can take a moment]"
-        $params = @{}
-        if ($PSboundParameters.ContainsKey('Verbose')) {
-            $params.Add('Verbose', $Verbose)
+        $params = @{ }
+        if ($PSboundParameters.ContainsKey('verbose')) {
+            $params.Add('verbose', $verbose)
         }
-        Resolve-Dependency @params
+        Resolve-Dependency @Params
     }
 }
 
@@ -128,7 +126,7 @@ process {
 
     task ResolveDependencies {
         Write-Host "Resolving Dependencies... [this can take a moment]"
-        $params = @{}
+        $params = @{ }
         if ($PSboundParameters.ContainsKey('Verbose')) {
             $params.Add('Verbose', $Verbose)
         }
@@ -136,7 +134,7 @@ process {
     }
 
     $buildFiles = Get-Item $PSScriptRoot\.build\* -Include *.ps1
-    foreach ($buildFile in $buildFiles){
+    foreach ($buildFile in $buildFiles) {
         "Importing file $($buildFile.BaseName)" | Write-Verbose
         . $buildFile.FullName
     }
