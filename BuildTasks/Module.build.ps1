@@ -32,18 +32,18 @@ task BuildModule @{
 
         foreach ($functionFile in $functionFiles) {
             $path = $functionFile.FullName
-            $usingRaws = (Get-Content $functionFile.FullName) -match 'using (module)|(namespace)'
+            $usingRaws = (Get-Content $functionFile.FullName) -match '^using (module)|(namespace)'
 
             foreach ($usingRaw in $usingRaws) {
                 if ($usings -contains $usingRaw) {
-                } elseif ($usingRaw -match 'using module [^.]') {
+                } elseif ($usingRaw -match '^using module [^.]') {
                     Add-Content -Path $moduleFile -Value $usingRaw -Force
                 } elseif (
-                    $usingRaw -match 'using module (\.{0,2}\\.*binaries)\\(.+)' -and
+                    $usingRaw -match '^using module (\.{0,2}\\.*binaries)\\(.+)' -and
                     (Resolve-Path (Join-Path $ProjectPath "Binaries")).ToString() -eq (Resolve-Path (Join-Path (Split-Path $path -Parent) $matches[1]).ToString())
                 ) {
                     Add-Content -Path $moduleFile -Value "using module .\Binaries\$($matches[2])" -Force
-                } elseif ($usingRaw -match 'using namespace') {
+                } elseif ($usingRaw -match '^using namespace') {
                     Add-Content -Path $moduleFile -Value $usingRaw -Force
                 }
                 $usings += $usingRaw
@@ -55,7 +55,7 @@ task BuildModule @{
         }
 
         foreach ($functionFile in $functionFiles) {
-            Add-Content -Path $moduleFile -Value ((Get-Content $functionFile.FullName) -notmatch 'using (module)|(namespace)') -Force
+            Add-Content -Path $moduleFile -Value ((Get-Content $functionFile.FullName) -notmatch '^using (module)|(namespace)') -Force
         }
 
         $publicFunctions = @()
@@ -100,7 +100,9 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
     $moduleRequirements = (Get-Content $moduleFile) -match '#requires'
 
     foreach ($moduleRequirement in $moduleRequirements) {
-        if ($_ -match '-modules (.+)( -)?') {
+        write-verbose $moduleRequirement -verbose
+        if ($moduleRequirement -match '-module (.+)') {
+            write-verbose $matches[1] -verbose
             $requiredModules += $matches[1].split(",").trim().ToLower()
         }
     }
