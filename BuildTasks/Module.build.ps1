@@ -100,9 +100,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
     $moduleRequirements = (Get-Content $moduleFile) -match '#requires'
 
     foreach ($moduleRequirement in $moduleRequirements) {
-        write-verbose $moduleRequirement -verbose
         if ($moduleRequirement -match '-module (.+)') {
-            write-verbose $matches[1] -verbose
             $requiredModules += $matches[1].split(",").trim().ToLower()
         }
     }
