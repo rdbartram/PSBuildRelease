@@ -14,7 +14,7 @@ param (
 task BuildModule @{
     before  = @("CreateModuleManifest")
     inputs  = {
-        Get-Item $ProjectPath\public\*, $ProjectPath\classes\*, $ProjectPath\private\* -ErrorAction SilentlyContinue
+        Get-ChildItem $ProjectPath\public\, $ProjectPath\classes\, $ProjectPath\private\ -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
     }
     outputs = { "$BuildOutput\$ProjectName.psm1"
     }
@@ -23,12 +23,12 @@ task BuildModule @{
 
         New-Item $moduleFile -Force | Out-Null
 
-        if ($null -ne (Get-Item $ProjectPath\classes\* -ErrorAction SilentlyContinue)) {
+        if ($null -ne (Get-ChildItem $ProjectPath\classes\ -Recurse -Filter *.psm1 -ErrorAction SilentlyContinue)) {
             Add-Content -Path $moduleFile -Value "using module .\$ProjectName-Classes.psm1" -Force
         }
 
         $usings = @()
-        $functionFiles = Get-ChildItem $ProjectPath\Private, $ProjectPath\Public -ErrorAction SilentlyContinue
+        $functionFiles = Get-ChildItem $ProjectPath\public\, $ProjectPath\private\ -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
 
         foreach ($functionFile in $functionFiles) {
             $path = $functionFile.FullName
@@ -59,7 +59,7 @@ task BuildModule @{
         }
 
         $publicFunctions = @()
-        $publicFiles = Get-ChildItem $ProjectPath\Public\ -Exclude "_root.ps1"
+        $publicFiles = Get-ChildItem $ProjectPath\Public\ -Exclude "_root.ps1" -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
 
         foreach ($publicFile in $publicFiles) {
             $publicFunctions += $publicFile.BaseName
@@ -97,10 +97,10 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
     }
 
     $requiredModules = @()
-    $moduleRequirements = (Get-Content $moduleFile) -match '#requires'
+    $moduleRequirements = (Get-Content $moduleFile) -match '^#requires'
 
     foreach ($moduleRequirement in $moduleRequirements) {
-        if ($_ -match '-modules (.+)( -)?') {
+        if ($moduleRequirement -match '-module (.+)') {
             $requiredModules += $matches[1].split(",").trim().ToLower()
         }
     }
@@ -139,7 +139,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
     #####
 }
 
-Task PackageModule -inputs {Get-ChildItem $BuildOutput -Recurse -Exclude *.zip, *.nuspec -File} -Outputs (Join-Path -Path $BuildOutput -ChildPath ('{0}_{1}.zip' -f $ProjectName, $env:GITVERSION_NuGetVersionV2)) {
+Task PackageModule -inputs { Get-ChildItem $BuildOutput -Recurse -Exclude *.zip, *.nuspec -File } -Outputs (Join-Path -Path $BuildOutput -ChildPath ('{0}_{1}.zip' -f $ProjectName, $env:GITVERSION_NuGetVersionV2)) {
     Compress-Archive -Path $BuildOutput\* -DestinationPath $Outputs -Force
 }
 
@@ -147,19 +147,24 @@ Task DownloadDependentModules -Inputs ("$BuildOutput\$ProjectName.psd1") -Output
 
     $requiredModules = (Import-PowerShellDataFile $inputs).RequiredModules
 
-    if ($requiredModule.count -gt 0) {
-        $uniqueModules = $requiredModule | Select-Object -Unique | Where-Object { $null -ne $_ }
+    if ($requiredModules.count -gt 0) {
+        $uniqueModules = $requiredModules | Select-Object -Unique | Where-Object { $null -ne $_ }
         New-Item -Path (Join-Path $ProjectPath Dependencies) -ItemType Directory -Force | Out-Null
         foreach ($uniqueModule in $uniqueModules) {
             # Find module in PSGallery and create version object from string version
-            $foundModule = Find-Module $uniqueModule | Sort-Object Version -Descending | Select-Object -First 1
+            $foundModule = Find-Module $uniqueModule -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1
             $foundVersion = $null
+            if ($null -eq $foundModule) {
+                Write-Warning "$uniqueModule was not found"
+                continue
+            }
+
             if (-not [System.Management.Automation.SemanticVersion]::TryParse($foundModule.Version, [ref]$foundVersion)) {
                 [System.Version]::TryParse($foundModule.Version, [ref]$foundVersion) | Out-Null
             }
 
             # Find locally installed module and create version object from string version
-            $availableVersionString = $availableVersion = (Get-Module $_.Name -ListAvailable).Version
+            $availableVersionString = $availableVersion = (Get-Module $foundModule.Name -ListAvailable).Version
             if (-not [System.Management.Automation.SemanticVersion]::TryParse($availableVersionString, [ref]$availableVersion)) {
                 [System.Version]::TryParse($availableVersionString, [ref]$availableVersion) | Out-Null
             }
