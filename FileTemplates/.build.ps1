@@ -9,7 +9,7 @@ Param (
     $ProjectName = (Get-Content $PSScriptRoot\Manifest.json -Raw | ConvertFrom-Json).ModuleInfo.Name,
 
     [Parameter()]
-    $ProjectPath = (Join-Path (Get-Location) "src"),
+    $ProjectPath = "$PSScriptRoot\src",
 
     [Parameter()]
     [String]
@@ -120,7 +120,7 @@ begin {
 process {
     if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
         $PSBoundParameters.Remove("ResolveDependency") | Out-Null
-        Invoke-Build $Tasks $MyInvocation.MyCommand.Path @PSBoundParameters
+        Invoke-Build $Tasks $MyInvocation.MyCommand.Path @PSBoundParameters -ProjectPath $ProjectPath -ProjectName $ProjectName
         return
     }
 
