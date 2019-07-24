@@ -27,7 +27,7 @@ param (
 task UpdateSignature {
 
     if($true -eq $IsWindows -and $null -eq $cert) {
-        $Cert = (Select-Object -First 1 -InputObject (Get-ChildItem -Path cert:\CurrentUser\my -CodeSigningCert)
+        $Cert = (Select-Object -First 1 -InputObject (Get-ChildItem -Path cert:\CurrentUser\my -CodeSigningCert))
     }
     $powerShellFiles = Get-ChildItem $BuildOutput -Include *.psm1, *.ps1, *.psd1
     foreach ($powerShellFile in $powerShellFiles) {
