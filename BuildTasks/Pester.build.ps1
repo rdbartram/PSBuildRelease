@@ -10,7 +10,7 @@ param (
 
 task Test {
     $pathsToCover = @()
-    $filters = "$ProjectPath\Classes\*.ps1", "$ProjectPath\Private\*.ps1", "$ProjectPath\Public\*.ps1"
+    $filters = "$ProjectPath\Classes\*.ps1", "$ProjectPath\private\*.ps1", "$ProjectPath\public\*.ps1"
 
     foreach ($filter in $filters) {
         if (Test-Path (Split-Path $filter -Parent)) {
