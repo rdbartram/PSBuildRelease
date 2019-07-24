@@ -59,7 +59,7 @@ task BuildModule @{
         }
 
         $publicFunctions = @()
-        $publicFiles = Get-ChildItem $ProjectPath\Public\ -Exclude "_root.ps1" -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
+        $publicFiles = Get-ChildItem $ProjectPath\public\ -Exclude "_root.ps1" -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
 
         foreach ($publicFile in $publicFiles) {
             $publicFunctions += $publicFile.BaseName
@@ -90,7 +90,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
     New-Item $moduleManifest -Force | Out-Null
 
     $publicFunctions = @()
-    $publicFiles = Get-ChildItem $ProjectPath\Public\
+    $publicFiles = Get-ChildItem $ProjectPath\public\
 
     foreach ($publicFile in $publicFiles) {
         $publicFunctions += $publicFile.BaseName
