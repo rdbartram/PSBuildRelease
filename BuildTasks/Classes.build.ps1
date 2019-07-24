@@ -38,7 +38,7 @@ task CompileClasses @{
 
             $i = 0
             # Gather all classes
-            $classesToImport = Get-ChildItem $ProjectPath\Classes -filter $file["Filter"] -Exclude $file["Exclude"] -Recurse
+            $classesToImport = Get-ChildItem $ProjectPath\classes -filter $file["Filter"] -Exclude $file["Exclude"] -Recurse
 
             $usings = @()
             $classPaths = $classesToImport.Fullname
@@ -60,7 +60,7 @@ task CompileClasses @{
                         Add-Content -Path $classPath -Value $usingRaw -Force
                     } elseif (
                         $usingRaw -match 'using module (\.{0,2}\\.*binaries)\\(.+)' -and
-                        (Resolve-Path (Join-Path $ProjectPath "Binaries")).ToString() -eq (Resolve-Path (Join-Path (Split-Path $path -Parent) $matches[1]).ToString())
+                        (Resolve-Path (Join-Path $ProjectPath "binaries")).ToString() -eq (Resolve-Path (Join-Path (Split-Path $path -Parent) $matches[1]).ToString())
                     ) {
                         Add-Content -Path $classPath -Value "using module .\Binaries\$($matches[2])" -Force
                     } elseif ($usingRaw -match 'using namespace') {
