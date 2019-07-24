@@ -40,9 +40,9 @@ task BuildModule @{
                     Add-Content -Path $moduleFile -Value $usingRaw -Force
                 } elseif (
                     $usingRaw -match '^using module (\.{0,2}\\.*binaries)\\(.+)' -and
-                    (Resolve-Path (Join-Path $ProjectPath "Binaries")).ToString() -eq (Resolve-Path (Join-Path (Split-Path $path -Parent) $matches[1]).ToString())
+                    (Resolve-Path (Join-Path $ProjectPath "binaries")).ToString() -eq (Resolve-Path (Join-Path (Split-Path $path -Parent) $matches[1]).ToString())
                 ) {
-                    Add-Content -Path $moduleFile -Value "using module .\Binaries\$($matches[2])" -Force
+                    Add-Content -Path $moduleFile -Value "using module .\binaries\$($matches[2])" -Force
                 } elseif ($usingRaw -match '^using namespace') {
                     Add-Content -Path $moduleFile -Value $usingRaw -Force
                 }
@@ -51,7 +51,7 @@ task BuildModule @{
         }
 
         if (Test-Path $ProjectPath\Strings\Strings.psd1) {
-            Add-Content -Path $moduleFile -Value 'Import-LocalizedData -BaseDirectory "$PSScriptRoot\Strings" -BindingVariable Strings -FileName "strings.psd1"' -Force
+            Add-Content -Path $moduleFile -Value 'Import-LocalizedData -BaseDirectory "$PSScriptRoot\strings" -BindingVariable Strings -FileName "strings.psd1"' -Force
         }
 
         foreach ($functionFile in $functionFiles) {
