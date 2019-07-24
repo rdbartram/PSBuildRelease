@@ -114,7 +114,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
         FileList          = (Get-ChildItem $BuildOutput -Recurse -File | ForEach-Object -Process { $_.FullName -Replace "$([regex]::Escape($BuildOutput))\\?" }) + "$ProjectName.psd1" | Select-Object -Unique
     }
 
-    if ($ProjectUri = (git.exe remote get-url origin)) {
+    if ($ProjectUri = (git remote get-url origin)) {
         $manifestData["ProjectUri"] = $projectUri
     }
 
