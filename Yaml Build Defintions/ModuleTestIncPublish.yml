@@ -31,7 +31,7 @@ jobs:
         displayName: Compile Module
         inputs:
           targetType: "filePath"
-          filePath: ${{ parameters.workingDirectory }}\.build.ps1
+          filePath: ${{ parameters.workingDirectory }}/.build.ps1
           arguments: -Task CreateModuleManifest, DownloadDependentModules -ResolveDependency
           pwsh: true
           workingDirectory: ${{ parameters.workingDirectory }}
@@ -40,13 +40,13 @@ jobs:
         displayName: "Publish Module Artifact"
         inputs:
           ArtifactName: Module
-          targetPath: ${{ parameters.workingDirectory }}\BuildOutput
+          targetPath: ${{ parameters.workingDirectory }}/BuildOutput
 
       - task: PublishPipelineArtifact@0
         displayName: "Publish Module Dependencies Artifact"
         inputs:
           ArtifactName: Dependencies
-          targetPath: ${{ parameters.workingDirectory }}\src\Dependencies
+          targetPath: ${{ parameters.workingDirectory }}/src/Dependencies
 
   - job: Test
     displayName: "Test On"
@@ -67,13 +67,13 @@ jobs:
         displayName: "Download Compiled Artifact"
         inputs:
           ArtifactName: Module
-          targetPath: ${{ parameters.workingDirectory }}\BuildOutput
+          targetPath: ${{ parameters.workingDirectory }}/BuildOutput
 
       - task: DownloadPipelineArtifact@0
         displayName: "Download Module Dependencies Artifact"
         inputs:
           ArtifactName: Dependencies
-          targetPath: ${{ parameters.workingDirectory }}\src\Dependencies
+          targetPath: ${{ parameters.workingDirectory }}/src/Dependencies
 
       - powershell: |
           if(-not (gcm pwsh -ea SilentlyContinue)) {
@@ -90,7 +90,7 @@ jobs:
         condition: eq(variables['PowerShellVersion'],'Core')
         inputs:
           targetType: "filePath"
-          filePath: ${{ parameters.workingDirectory }}\.build.ps1
+          filePath: ${{ parameters.workingDirectory }}/.build.ps1
           arguments: -Task Test -ResolveDependency
           pwsh: true
           workingDirectory: ${{ parameters.workingDirectory }}
@@ -100,7 +100,7 @@ jobs:
         condition: eq(variables['PowerShellVersion'],'Windows')
         inputs:
           targetType: "filePath"
-          filePath: ${{ parameters.workingDirectory }}\.build.ps1
+          filePath: ${{ parameters.workingDirectory }}/.build.ps1
           arguments: -Task Test -ResolveDependency
           pwsh: false
           workingDirectory: ${{ parameters.workingDirectory }}

@@ -30,7 +30,7 @@ jobs:
         displayName: Compile Module
         inputs:
           targetType: "filePath"
-          filePath: ${{ parameters.workingDirectory }}\.build.ps1
+          filePath: ${{ parameters.workingDirectory }}/.build.ps1
           arguments: -Task IncrementScriptVersion, DownloadRunbookDependentModules -ResolveDependency
           pwsh: true
           workingDirectory: ${{ parameters.workingDirectory }}
@@ -39,13 +39,13 @@ jobs:
         displayName: "Publish Runbooks Artifact"
         inputs:
           ArtifactName: Runbooks
-          targetPath: ${{ parameters.workingDirectory }}\Runbooks
+          targetPath: ${{ parameters.workingDirectory }}/Runbooks
 
       - task: PublishPipelineArtifact@0
         displayName: "Publish Runbook Dependencies Artifact"
         inputs:
           ArtifactName: Dependencies
-          targetPath: ${{ parameters.workingDirectory }}\Runbooks\Dependencies
+          targetPath: ${{ parameters.workingDirectory }}/Runbooks/Dependencies
 
   - job: Test
     displayName: "Test On"
@@ -66,7 +66,7 @@ jobs:
         displayName: "Download Runbook Dependencies Artifact"
         inputs:
           ArtifactName: Dependencies
-          targetPath: ${{ parameters.workingDirectory }}\Runbooks\Dependencies
+          targetPath: ${{ parameters.workingDirectory }}/Runbooks/Dependencies
 
       - powershell: |
           if(-not (gcm pwsh -ea SilentlyContinue)) {
@@ -83,7 +83,7 @@ jobs:
         condition: eq(variables['PowerShellVersion'],'Core')
         inputs:
           targetType: "filePath"
-          filePath: ${{ parameters.workingDirectory }}\.build.ps1
+          filePath: ${{ parameters.workingDirectory }}/.build.ps1
           arguments: -Task RunbookTest -ResolveDependency
           pwsh: true
           workingDirectory: ${{ parameters.workingDirectory }}
@@ -93,7 +93,7 @@ jobs:
         condition: eq(variables['PowerShellVersion'],'Windows')
         inputs:
           targetType: "filePath"
-          filePath: ${{ parameters.workingDirectory }}\.build.ps1
+          filePath: ${{ parameters.workingDirectory }}/.build.ps1
           arguments: -Task RunbookTest -ResolveDependency
           pwsh: false
           workingDirectory: ${{ parameters.workingDirectory }}
