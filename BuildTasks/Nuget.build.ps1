@@ -39,7 +39,7 @@ task UpdateSignature {
     }
 }
 
-task CreateNugetSpec -Inputs ("$BuildOutput\$ProjectName.psd1") -Outputs ("$BuildOutput\$ProjectName.nuspec") {
+task CreateNugetSpec -Inputs (Join-Path $BuildOutput "$ProjectName.psd1") -Outputs (Join-Path $BuildOutput "$ProjectName.nuspec") {
     $moduleData = Import-PowerShellDataFile $Inputs
 
     [xml]$doc = New-Object System.Xml.XmlDocument

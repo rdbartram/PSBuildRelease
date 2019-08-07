@@ -4,7 +4,7 @@ Param (
     $ProjectPath = (property ProjectPath $BuildRoot)
 )
 
-task IncrementScriptVersion -Inputs (Get-ChildItem -Path $ProjectPath\* -Include "*.ps1") -Outputs (Join-Path $ProjectPath RunbookCompiled.txt) {
+task IncrementScriptVersion -Inputs (Get-ChildItem -Path (Join-Path $ProjectPath "*") -Include "*.ps1") -Outputs (Join-Path $ProjectPath RunbookCompiled.txt) {
 
     Write-Host ("Updating Runbook revision to '{0}' ..." -f $env:GITVERSION_MajorMinorPatch)
 

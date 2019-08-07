@@ -10,7 +10,7 @@ param (
 
 task Test {
     $pathsToCover = @()
-    $filters = "$ProjectPath\Classes\*.ps1", "$ProjectPath\private\*.ps1", "$ProjectPath\public\*.ps1"
+    $filters = (Join-Path $ProjectPath "Classes\*.ps1"), (Join-Path $ProjectPath "private\*.ps1"), (Join-Path $ProjectPath "public\*.ps1")
 
     foreach ($filter in $filters) {
         if (Test-Path (Split-Path $filter -Parent)) {
@@ -34,10 +34,10 @@ task Test {
     }
 
     [void] $pesterArgs.Add('OutputFormat', 'NUnitXml')
-    [void] $pesterArgs.Add('OutputFile', "$ProjectPath\TEST-Results.xml")
+    [void] $pesterArgs.Add('OutputFile', (Join-Path $ProjectPath "TEST-Results.xml"))
 
     [void] $pesterArgs.Add('CodeCoverageOutputFileFormat', 'JaCoCo')
-    [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage-$($PSVersionTable.PSVersion).xml")
+    [void] $pesterArgs.Add('CodeCoverageOutputFile', (Join-Path $ProjectPath "Coverage-$($PSVersionTable.PSVersion).xml"))
 
     $result = Invoke-Pester @pesterArgs
     if ($result.FailedCount -gt 0) {
@@ -46,7 +46,7 @@ task Test {
 }
 
 task RunbookTest {
-    $pathsToCover = @("$ProjectPath\*.ps1")
+    $pathsToCover = @("$(Join-Path $ProjectPath "*.ps1")")
 
     $pesterArgs = @{
         PassThru     = $true
@@ -64,10 +64,10 @@ task RunbookTest {
     }
 
     [void] $pesterArgs.Add('OutputFormat', 'NUnitXml')
-    [void] $pesterArgs.Add('OutputFile', "$ProjectPath\TEST-Results.xml")
+    [void] $pesterArgs.Add('OutputFile', (Join-path $ProjectPath "TEST-Results.xml"))
 
     [void] $pesterArgs.Add('CodeCoverageOutputFileFormat', 'JaCoCo')
-    [void] $pesterArgs.Add('CodeCoverageOutputFile', "$ProjectPath\Coverage-$($PSVersionTable.PSVersion).xml")
+    [void] $pesterArgs.Add('CodeCoverageOutputFile', (Join-Path $ProjectPath "Coverage-$($PSVersionTable.PSVersion).xml"))
 
     $result = Invoke-Pester @pesterArgs
     if ($result.FailedCount -gt 0) {

@@ -12,12 +12,12 @@ param (
 )
 
 task CompileClasses @{
-    if      = {Test-Path $ProjectPath\classes\}
+    if      = {Test-Path (Join-Path $ProjectPath "classes")}
     inputs  = {
-        Get-Item $ProjectPath\classes\* -ErrorAction SilentlyContinue
+        Get-Item (Join-Path $ProjectPath "classes\*") -ErrorAction SilentlyContinue
     }
     outputs = {
-        "$BuildOutput\$ProjectName-Classes.psm1"
+        Join-Path $BuildOutput "$ProjectName-Classes.psm1"
     }
     Jobs    = {
         $files = @(
@@ -38,7 +38,7 @@ task CompileClasses @{
 
             $i = 0
             # Gather all classes
-            $classesToImport = Get-ChildItem $ProjectPath\classes -filter $file["Filter"] -Exclude $file["Exclude"] -Recurse
+            $classesToImport = Get-ChildItem (Join-Path $ProjectPath "classes") -filter $file["Filter"] -Exclude $file["Exclude"] -Recurse
 
             $usings = @()
             $classPaths = $classesToImport.Fullname

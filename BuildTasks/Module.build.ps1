@@ -14,7 +14,7 @@ param (
 task BuildModule @{
     before  = @("CreateModuleManifest")
     inputs  = {
-        Get-ChildItem $ProjectPath\public\, $ProjectPath\classes\, $ProjectPath\private\ -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
+        Get-ChildItem (Join-Path $ProjectPath "public"), (Join-Path $ProjectPath "classes"), (Join-Path $ProjectPath "private") -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
     }
     outputs = { Join-Path $BuildOutput "$ProjectName.psm1"
     }
@@ -23,12 +23,12 @@ task BuildModule @{
 
         New-Item $moduleFile -Force | Out-Null
 
-        if ($null -ne (Get-ChildItem $ProjectPath\classes\ -Recurse -Filter *.psm1 -ErrorAction SilentlyContinue)) {
+        if ($null -ne (Get-ChildItem (Join-Path $ProjectPath "classes") -Recurse -Filter *.psm1 -ErrorAction SilentlyContinue)) {
             Add-Content -Path $moduleFile -Value "using module .\$ProjectName-Classes.psm1" -Force
         }
 
         $usings = @()
-        $functionFiles = Get-ChildItem $ProjectPath\public\, $ProjectPath\private\ -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
+        $functionFiles = Get-ChildItem (Join-Path $ProjectPath "public"), (Join-Path $ProjectPath "private") -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
 
         foreach ($functionFile in $functionFiles) {
             $path = $functionFile.FullName
@@ -50,8 +50,8 @@ task BuildModule @{
             }
         }
 
-        if (Test-Path $ProjectPath\Strings\Strings.psd1) {
-            Add-Content -Path $moduleFile -Value 'Import-LocalizedData -BaseDirectory "$PSScriptRoot\strings" -BindingVariable Strings -FileName "strings.psd1"' -Force
+        if (Test-Path (Join-Path $ProjectPath "Strings\Strings.psd1")) {
+            Add-Content -Path $moduleFile -Value 'Import-LocalizedData -BaseDirectory (Join-Path $PSScriptRoot "strings") -BindingVariable Strings -FileName "strings.psd1"' -Force
         }
 
         foreach ($functionFile in $functionFiles) {
@@ -59,7 +59,7 @@ task BuildModule @{
         }
 
         $publicFunctions = @()
-        $publicFiles = Get-ChildItem $ProjectPath\public\ -Exclude "_root.ps1" -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
+        $publicFiles = Get-ChildItem (Join-Path $ProjectPath "public") -Exclude "_root.ps1" -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
 
         foreach ($publicFile in $publicFiles) {
             $publicFunctions += $publicFile.BaseName
@@ -72,25 +72,25 @@ task BuildModule @{
 task CopyStaticResources @{
     before = "CreateModuleManifest"
     if     = {
-        $manifest = Get-Content "$BuildRoot\Manifest.json" -ea SilentlyContinue | ConvertFrom-Json
+        $manifest = Get-Content (Join-Path $BuildRoot "Manifest.json") -ea SilentlyContinue | ConvertFrom-Json
         $null -ne $manifest.StaticResources
     }
     Jobs   = {
-        $manifest = Get-Content "$BuildRoot\Manifest.json" -ea SilentlyContinue | ConvertFrom-Json
+        $manifest = Get-Content (Join-Path $BuildRoot "Manifest.json") -ea SilentlyContinue | ConvertFrom-Json
         foreach ($r in $manifest.StaticResources) {
-            Copy-Item (Join-Path $ProjectPath "$r") $BuildOutput -Recurse -Force -ErrorAction SilentlyContinue
+            Copy-Item (Join-Path $ProjectPath $r) $BuildOutput -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 }
 
-task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDependentModules -inputs ("$BuildOutput\$ProjectName.psm1") -outputs ("$BuildOutput\$ProjectName.psd1") {
+task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDependentModules -inputs (Join-Path $BuildOutput "$ProjectName.psm1") -outputs (Join-Path $BuildOutput "$ProjectName.psd1") {
     $moduleFile = $inputs
     $moduleManifest = Join-Path $BuildOutput "$ProjectName.psd1"
 
     New-Item $moduleManifest -Force | Out-Null
 
     $publicFunctions = @()
-    $publicFiles = Get-ChildItem $ProjectPath\public\
+    $publicFiles = Get-ChildItem (Join-Path $ProjectPath "public")
 
     foreach ($publicFile in $publicFiles) {
         $publicFunctions += $publicFile.BaseName
@@ -140,10 +140,10 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
 }
 
 Task PackageModule -inputs { Get-ChildItem $BuildOutput -Recurse -Exclude *.zip, *.nuspec -File } -Outputs (Join-Path -Path $BuildOutput -ChildPath ('{0}_{1}.zip' -f $ProjectName, $env:GITVERSION_NuGetVersionV2)) {
-    Compress-Archive -Path $BuildOutput\* -DestinationPath $Outputs -Force
+    Compress-Archive -Path (Join-Path $BuildOutput "*") -DestinationPath $Outputs -Force
 }
 
-Task DownloadDependentModules -Inputs ("$BuildOutput\$ProjectName.psd1") -Outputs (Join-Path $ProjectPath Dependencies\module.txt) {
+Task DownloadDependentModules -Inputs (Join-Path $BuildOutput "$ProjectName.psd1") -Outputs (Join-Path $ProjectPath Dependencies\module.txt) {
 
     $requiredModules = (Import-PowerShellDataFile $inputs).RequiredModules
 
