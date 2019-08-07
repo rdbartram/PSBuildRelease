@@ -1,13 +1,13 @@
-task GitVersion -before CreateModuleManifest, IncrementScriptVersion -If ((get-command gitversion -ErrorAction SilentlyContinue) -and ($null -ne $env:GITVERSION_NuGetVersionV2)) {
+task GitVersion -before CreateModuleManifest, IncrementScriptVersion -If ((get-command gitversion -ErrorAction SilentlyContinue) -and ($null -ne $env:GITVERSION_NUGETVERSIONV2)) {
     $gitVersionInfo = GitVersion | ConvertFrom-Json
-    $env:GITVERSION_MajorMinorPatch = $gitVersionInfo.MajorMinorPatch
-    $env:GITVERSION_NuGetPreReleaseTagV2 = $gitVersionInfo.NuGetPreReleaseTagV2
-    $env:GITVERSION_NuGetVersionV2 = $gitVersionInfo.NuGetVersionV2
+    $env:GITVERSION_MAJORMINORPATCH = $gitVersionInfo.MAJORMINORPATCH
+    $env:GITVERSION_NUGETPRERELEASETAGV2 = $gitVersionInfo.NUGETPRERELEASETAGV2
+    $env:GITVERSION_NUGETVERSIONV2 = $gitVersionInfo.NUGETVERSIONV2
 }
 
-task FakeGitVersion -before CreateModuleManifest, IncrementScriptVersion -If (-not (get-command gitversion -ErrorAction SilentlyContinue) -and ($null -ne $env:GITVERSION_NuGetVersionV2)) {
+task FakeGitVersion -before CreateModuleManifest, IncrementScriptVersion -If (-not (get-command gitversion -ErrorAction SilentlyContinue) -and ($null -ne $env:GITVERSION_NUGETVERSIONV2)) {
     Write-Warning 'gitversion was not found. The supplied version is a default and not necessarily useful'
-    $env:GITVERSION_MajorMinorPatch = "1.0.0"
-    $env:GITVERSION_NuGetPreReleaseTagV2 = ""
-    $env:GITVERSION_NuGetVersionV2 = "1.0.0"
+    $env:GITVERSION_MAJORMINORPATCH = "1.0.0"
+    $env:GITVERSION_NUGETPRERELEASETAGV2 = ""
+    $env:GITVERSION_NUGETVERSIONV2 = "1.0.0"
 }

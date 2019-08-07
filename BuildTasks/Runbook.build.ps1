@@ -6,10 +6,10 @@ Param (
 
 task IncrementScriptVersion -Inputs (Get-ChildItem -Path (Join-Path $ProjectPath "*") -Include "*.ps1") -Outputs (Join-Path $ProjectPath RunbookCompiled.txt) {
 
-    Write-Host ("Updating Runbook revision to '{0}' ..." -f $env:GITVERSION_MajorMinorPatch)
+    Write-Host ("Updating Runbook revision to '{0}' ..." -f $env:GITVERSION_MAJORMINORPATCH)
 
     foreach ($inputArg in $Inputs) {
-        Update-ScriptFileInfo -Path $inputArg -Version $env:GITVERSION_MajorMinorPatch
+        Update-ScriptFileInfo -Path $inputArg -Version $env:GITVERSION_MAJORMINORPATCH
     }
 
     New-Item -Path $outputs -ItemType File -Force | Out-Null

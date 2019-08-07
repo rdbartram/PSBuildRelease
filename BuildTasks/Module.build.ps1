@@ -110,7 +110,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
         RootModule        = "$ProjectName.psm1"
         RequiredModules   = ($requiredModules | Sort-Object | Select-Object -Unique)
         FunctionsToExport = $publicFunctions
-        ModuleVersion     = $env:GITVERSION_MajorMinorPatch
+        ModuleVersion     = $env:GITVERSION_MAJORMINORPATCH
         FileList          = (Get-ChildItem $BuildOutput -Recurse -File | ForEach-Object -Process { $_.FullName -Replace "$([regex]::Escape($BuildOutput))\\?" }) + "$ProjectName.psd1" | Select-Object -Unique
     }
 
@@ -130,16 +130,16 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
 
     #####prerelease hack until powershell supports native
 
-    if ($null -ne $env:GITVERSION_NuGetPreReleaseTagV2) {
+    if ($null -ne $env:GITVERSION_NUGETPRERELEASETAGV2) {
         $moduleData = ConvertFrom-Metadata $moduleManifest
-        $moduleData.PrivateData.PSData += @{ prerelease = "-$env:GITVERSION_NuGetPreReleaseTagV2" }
+        $moduleData.PrivateData.PSData += @{ prerelease = "-$env:GITVERSION_NUGETPRERELEASETAGV2" }
         Export-Metadata -Path $moduleManifest -InputObject $moduleData
     }
 
     #####
 }
 
-Task PackageModule -inputs { Get-ChildItem $BuildOutput -Recurse -Exclude *.zip, *.nuspec -File } -Outputs (Join-Path -Path $BuildOutput -ChildPath ('{0}_{1}.zip' -f $ProjectName, $env:GITVERSION_NuGetVersionV2)) {
+Task PackageModule -inputs { Get-ChildItem $BuildOutput -Recurse -Exclude *.zip, *.nuspec -File } -Outputs (Join-Path -Path $BuildOutput -ChildPath ('{0}_{1}.zip' -f $ProjectName, $env:GITVERSION_NUGETVERSIONV2)) {
     Compress-Archive -Path (Join-Path $BuildOutput "*") -DestinationPath $Outputs -Force
 }
 
