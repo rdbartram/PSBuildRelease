@@ -13,7 +13,7 @@ jobs:
       name: ${{ parameters.agent }}
 
     steps:
-      - task: gittools.gitversion.gitversion-task.GitVersion@4
+      - task: gittools.gitversion.gitversion-task.GitVersion@5
         displayName: Build Version from GitVersion
 
       - powershell: |
