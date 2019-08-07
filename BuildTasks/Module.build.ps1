@@ -16,7 +16,7 @@ task BuildModule @{
     inputs  = {
         Get-ChildItem $ProjectPath\public\, $ProjectPath\classes\, $ProjectPath\private\ -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue
     }
-    outputs = { "$BuildOutput\$ProjectName.psm1"
+    outputs = { Join-Path $BuildOutput "$ProjectName.psm1"
     }
     Jobs    = 'CompileClasses', {
         $moduleFile = Join-Path $BuildOutput "$ProjectName.psm1"
