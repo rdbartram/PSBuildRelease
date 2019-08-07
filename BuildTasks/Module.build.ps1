@@ -111,7 +111,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
         RequiredModules   = ($requiredModules | Sort-Object | Select-Object -Unique)
         FunctionsToExport = $publicFunctions
         ModuleVersion     = $env:GITVERSION_MAJORMINORPATCH
-        FileList          = (Get-ChildItem $BuildOutput -Recurse -File | ForEach-Object -Process { $_.FullName -Replace "$([regex]::Escape($BuildOutput))\\?" }) + "$ProjectName.psd1" | Select-Object -Unique
+        FileList          = (Get-ChildItem $BuildOutput -Recurse -File | ForEach-Object -Process { ($_.FullName -Replace "$([regex]::Escape($BuildOutput))") -Replace '^\\|\/' }) | Select-Object -Unique
     }
 
     if ($ProjectUri = (git remote get-url origin)) {
