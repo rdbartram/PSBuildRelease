@@ -108,7 +108,7 @@ jobs:
       - task: PublishCodeCoverageResults@1
         displayName: "Publish code coverage"
         inputs:
-          summaryFileLocation: "**/coverage-5*.xml"
+          summaryFileLocation: "**/Coverage-5*.xml"
         condition: always()
 
   - job: BuildChecks
