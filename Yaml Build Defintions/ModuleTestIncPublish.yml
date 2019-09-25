@@ -55,7 +55,7 @@ jobs:
     dependsOn: Compile
     condition: succeeded('Compile')
     pool:
-      name: ${{ parameters.agent }}
+      vmImage: ${{ parameters.agent }}
     strategy:
       maxParallel: 2
       matrix:
@@ -126,7 +126,7 @@ jobs:
       - Compile
       - Test
     pool:
-      name: ${{ parameters.agent }}
+      vmImage: ${{ parameters.agent }}
 
     condition: always()
 
@@ -159,21 +159,21 @@ jobs:
           baseBranchRef: ${{ parameters.refBranch }}
 
   - ${{ if ne(parameters.galleryAPIKey, '') }}:
-    - job: PublishToGallery
-      displayName: "Publish To Gallery"
-      dependsOn:
-        - BuildChecks
-      pool:
-        name: ${{ parameters.agent }}
+      - job: PublishToGallery
+        displayName: "Publish To Gallery"
+        dependsOn:
+          - BuildChecks
+        pool:
+          vmImage: ${{ parameters.agent }}
 
-      steps:
-      - task: DownloadPipelineArtifact@0
-        displayName: "Download Compiled Artifact"
-        inputs:
-          ArtifactName: Module
-          targetPath: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
-      - task: kenakamu.PSGalleryPublisher.powershell-gallery-publish-task.PSGalleryPackager@0
-        displayName: 'PowerShell Gallery Packager '
-        inputs:
-          apiKey: ${{ parameters.galleryAPIKey }}
-          path: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
+        steps:
+          - task: DownloadPipelineArtifact@0
+            displayName: "Download Compiled Artifact"
+            inputs:
+              ArtifactName: Module
+              targetPath: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
+          - task: kenakamu.PSGalleryPublisher.powershell-gallery-publish-task.PSGalleryPackager@0
+            displayName: "PowerShell Gallery Packager "
+            inputs:
+              apiKey: ${{ parameters.galleryAPIKey }}
+              path: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
