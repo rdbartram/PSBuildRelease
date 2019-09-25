@@ -4,8 +4,10 @@ parameters:
   coverageThreshold: 60
   coverageVariance: 5
   workingDirectory: $(System.DefaultWorkingDirectory)
+  galleryAPIKey: ""
+  moduleName: ""
 
-  agent: "vs2017-win2016"
+  agent: "windows-latest"
 
 jobs:
   - job: Compile
@@ -155,3 +157,23 @@ jobs:
           baseDefinitionId: ${{ parameters.baseBuildDefinitionId }}
           baseRepoId: ${{ parameters.baseRepoId }}
           baseBranchRef: ${{ parameters.refBranch }}
+
+  - ${{ if ne(parameters.galleryAPIKey, '') }}:
+    - job: PublishToGallery
+      displayName: "Publish To Gallery"
+      dependsOn:
+        - BuildChecks
+      pool:
+        name: ${{ parameters.agent }}
+
+      steps:
+      - task: DownloadPipelineArtifact@0
+          displayName: "Download Compiled Artifact"
+          inputs:
+            ArtifactName: Module
+            targetPath: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
+      - task: kenakamu.PSGalleryPublisher.powershell-gallery-publish-task.PSGalleryPackager@0
+        displayName: 'PowerShell Gallery Packager '
+        inputs:
+          apiKey: ${{ parameters.galleryAPIKey }}
+          path: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
