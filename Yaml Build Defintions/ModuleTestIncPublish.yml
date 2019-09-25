@@ -7,7 +7,7 @@ parameters:
   galleryAPIKey: ""
   moduleName: ""
 
-  agent: "windows-latest"
+  agent: "vs2017-win2016"
 
 jobs:
   - job: Compile
@@ -103,7 +103,7 @@ jobs:
         inputs:
           targetType: "filePath"
           filePath: ${{ parameters.workingDirectory }}/.build.ps1
-          arguments: -Task Test -ResolveDependency
+          arguments: -Task Test -ResolveDependency -ProjectName "${{ parameters.moduleName }}"
           pwsh: false
           workingDirectory: ${{ parameters.workingDirectory }}
 
