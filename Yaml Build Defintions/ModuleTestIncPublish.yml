@@ -168,10 +168,10 @@ jobs:
 
       steps:
       - task: DownloadPipelineArtifact@0
-          displayName: "Download Compiled Artifact"
-          inputs:
-            ArtifactName: Module
-            targetPath: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
+        displayName: "Download Compiled Artifact"
+        inputs:
+          ArtifactName: Module
+          targetPath: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
       - task: kenakamu.PSGalleryPublisher.powershell-gallery-publish-task.PSGalleryPackager@0
         displayName: 'PowerShell Gallery Packager '
         inputs:
