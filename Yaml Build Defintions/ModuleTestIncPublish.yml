@@ -103,7 +103,7 @@ jobs:
         inputs:
           targetType: "filePath"
           filePath: ${{ parameters.workingDirectory }}/.build.ps1
-          arguments: -Task Test -ResolveDependency -ProjectName "${{ parameters.moduleName }}"
+          arguments: -Task Test -ResolveDependency
           pwsh: false
           workingDirectory: ${{ parameters.workingDirectory }}
 
