@@ -6,6 +6,11 @@ parameters:
   workingDirectory: $(System.DefaultWorkingDirectory)
   galleryAPIKey: ""
   moduleName: ""
+  matrix:
+    Windows:
+      PowerShellVersion: Windows
+    Core:
+      PowerShellVersion: Core
 
   agent: "vs2017-win2016"
 
@@ -58,11 +63,7 @@ jobs:
       vmImage: ${{ parameters.agent }}
     strategy:
       maxParallel: 2
-      matrix:
-        Windows:
-          PowerShellVersion: Windows
-        Core:
-          PowerShellVersion: Core
+      matrix: ${{ parameters.matrix }}
 
     steps:
       - task: DownloadPipelineArtifact@0
