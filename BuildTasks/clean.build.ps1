@@ -19,9 +19,9 @@ task Clean {
     "`t CLEAN UP"
     $LineSeparation
 
-    Get-ChildItem $BuildOutput | Remove-Item -Force -Recurse -Verbose -ErrorAction Stop
+    Get-ChildItem $BuildOutput -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -Verbose -ErrorAction Stop
 }
 
 task CleanPackage -before PackageModule {
-    Get-ChildItem -Path $BuildOutput -Filter ('{0}_*.zip' -f $ProjectName) | Remove-Item  -Force -ErrorAction SilentlyContinue
+    Get-ChildItem -Path $BuildOutput -Filter ('{0}_*.zip' -f $ProjectName) -ErrorAction SilentlyContinue | Remove-Item  -Force -ErrorAction SilentlyContinue
 }

@@ -6,10 +6,10 @@ Param (
 
     [Parameter()]
     [string]
-    $ProjectName = (Get-Content $PSScriptRoot\Manifest.json -Raw | ConvertFrom-Json).ModuleInfo.Name,
+    $ProjectName = (Get-Content (Join-Path (Get-Location) "Manifest.json") -Raw | ConvertFrom-Json).ModuleInfo.Name,
 
     [Parameter()]
-    $ProjectPath = "$PSScriptRoot\src",
+    $ProjectPath = (Join-Path (Get-Location) "src"),
 
     [Parameter()]
     [String]
@@ -28,6 +28,14 @@ Param (
     $GalleryProxy,
 
     [Parameter()]
+    [string]
+    $PublishGallery,
+
+    [Parameter()]
+    [string]
+    $PublishKey,
+
+    [Parameter()]
     [switch]
     $ResolveDependency
 )
@@ -36,13 +44,21 @@ begin {
     Import-Module Microsoft.PowerShell.Utility, Microsoft.PowerShell.Security -ErrorAction SilentlyContinue
     Get-PackageProvider | Out-Null
 
-    $oldpaths = $env:PSModulePath
-    $env:PSModulePath = @(
-        (Join-Path $PSScriptRoot "Dependencies"),
-        (Join-Path $PSScriptRoot "src\Dependencies")
-    ) -join ';'
+    $ProjectRoot = Resolve-Path (Split-Path $ProjectPath -Parent)
 
-    $dependencyPaths = (Join-Path $PSScriptRoot "Dependencies")
+    $oldpaths = $env:PSModulePath
+
+    $ModulePathSplitter = ":"
+    if($IsWindows -or ($PSVersionTable.PSVersion -lt [System.Version]"6.0")) {
+        $ModulePathSplitter = ";"
+    }
+
+    $env:PSModulePath = @(
+        (Join-Path $ProjectRoot "Dependencies"),
+        (Join-Path $ProjectRoot "src\Dependencies")
+    ) -join $ModulePathSplitter
+
+    $dependencyPaths = (Join-Path $ProjectRoot "Dependencies")
 
     foreach ($dependencyPath in $dependencyPaths) {
         if (-not (Test-Path $dependencyPath -PathType Container)) {
@@ -51,8 +67,10 @@ begin {
     }
 
     if (![io.path]::IsPathRooted($BuildOutput)) {
-        $BuildOutput = Join-Path -Path $PSScriptRoot -ChildPath $BuildOutput
+        $BuildOutput = Join-Path -Path $ProjectRoot -ChildPath (Join-Path $BuildOutput $ProjectName)
     }
+
+    New-Item $BuildOutput -Force -ItemType Directory | Out-Null
 
     function Resolve-Dependency {
         [CmdletBinding()]
@@ -70,40 +88,40 @@ begin {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
         }
 
-        if (!(Get-Module -Listavailable PSDepend)) {
-            Write-Verbose "BootStrapping PSDepend"
-            "Parameter $BuildOutput" | Write-Verbose
-            $savePSDependParams = @{
-                Name = 'PSDepend', 'PowershellGet'
-                Path = "$PSScriptRoot\Dependencies"
-            }
-            if ($PSBoundParameters.ContainsKey('verbose')) { $savePSDependParams.add('verbose', $verbose) }
-            if ($GalleryRepository) { $savePSDependParams.Add('Repository', $GalleryRepository) }
-            if ($GalleryProxy) { $savePSDependParams.Add('Proxy', $GalleryProxy) }
-            if ($GalleryCredential) { $savePSDependParams.Add('ProxyCredential', $GalleryCredential) }
-            Save-Module @savePSDependParams
+        Write-Verbose "BootStrapping PSDepend"
+        "Parameter $BuildOutput" | Write-Verbose
+        $savePSDependParams = @{
+            Name = 'PSDepend', 'PowershellGet', 'Configuration'
+            Path = "$ProjectRoot\Dependencies"
         }
+        if ($PSBoundParameters.ContainsKey('verbose')) { $savePSDependParams.add('verbose', $verbose) }
+        if ($GalleryRepository) { $savePSDependParams.Add('Repository', $GalleryRepository) }
+        if ($GalleryProxy) { $savePSDependParams.Add('Proxy', $GalleryProxy) }
+        if ($GalleryCredential) { $savePSDependParams.Add('ProxyCredential', $GalleryCredential) }
+        Save-Module @savePSDependParams
 
-        $DependencyInputObject = Import-PowerShellDataFile (Join-Path $PSScriptRoot "PSDepend.build.psd1")
+        $DependencyInputObject = Import-PowerShellDataFile (Join-Path $ProjectRoot "PSDepend.build.psd1")
 
         if ($null -ne $env:SYSTEM_ACCESSTOKEN) {
             $DependencyInputObject.BR.Name = $DependencyInputObject.BR.Name.Replace("https://", "https://$env:BuildServiceAccountId:$env:SYSTEM_ACCESSTOKEN`@")
         }
 
+        Export-Metadata -InputObject $DependencyInputObject -Path (Join-Path $ProjectRoot "PSDepend.build.psd1") -AsHashtable
+
         $PSDependParams = @{
             Force       = $true
-            InputObject = $DependencyInputObject
+            Path        = (Join-Path $ProjectRoot "PSDepend.build.psd1")
             Install     = $true
-            Target      = "$PSScriptRoot\Dependencies"
+            Target      = "$ProjectRoot\Dependencies"
         }
 
         ##### HACK for psdepend #####
-        $map = Get-Item "$PSScriptRoot\Dependencies\PSDepend\*\PSDependMap.psd1"
-        $newmap = (Get-Content $map) -replace "Supports = 'windows'$", "Supports = 'windows', 'core'"
+        $map = Get-Item "$ProjectRoot\Dependencies\PSDepend\*\PSDependMap.psd1"
+        $newmap = (Get-Content $map) -replace "Supports = 'windows'$", "Supports = 'windows', 'core', 'linux', 'macos'"
         Set-Content -path $map -Value $newmap -Force
         #############################
 
-        $null = Invoke-PSDepend @PSDependParams
+        $null = Invoke-PSDepend @PSDependParams >> $null
         Write-Verbose "Project Bootstrapped, returning to Invoke-Build"
     }
 
@@ -120,7 +138,11 @@ begin {
 process {
     if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
         $PSBoundParameters.Remove("ResolveDependency") | Out-Null
-        Invoke-Build $Tasks $MyInvocation.MyCommand.Path @PSBoundParameters -ProjectPath $ProjectPath -ProjectName $ProjectName
+        $PSBoundParameters["ProjectName"] = $ProjectName
+        $PSBoundParameters["ProjectPath"] = $ProjectPath
+        $PSBoundParameters["BuildOutput"] = $BuildOutput
+
+        Invoke-Build $Tasks $MyInvocation.MyCommand.Path @PSBoundParameters
         return
     }
 
@@ -133,7 +155,7 @@ process {
         Resolve-Dependency @params
     }
 
-    $buildFiles = Get-Item $PSScriptRoot\.build\* -Include *.ps1
+    $buildFiles = Get-Item $ProjectRoot\.build\* -Include *.ps1
     foreach ($buildFile in $buildFiles) {
         "Importing file $($buildFile.BaseName)" | Write-Verbose
         . $buildFile.FullName

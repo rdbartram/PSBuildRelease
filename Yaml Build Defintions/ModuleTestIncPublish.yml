@@ -171,9 +171,12 @@ jobs:
             displayName: "Download Compiled Artifact"
             inputs:
               ArtifactName: Module
-              targetPath: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
-          - task: kenakamu.PSGalleryPublisher.powershell-gallery-publish-task.PSGalleryPackager@0
-            displayName: "PowerShell Gallery Packager "
+              targetPath: ${{ parameters.workingDirectory }}/BuildOutput
+          - task: PowerShell@2
+            displayName: Publish Module
             inputs:
-              apiKey: ${{ parameters.galleryAPIKey }}
-              path: ${{ parameters.workingDirectory }}/${{ parameters.moduleName }}
+              targetType: "filePath"
+              filePath: ${{ parameters.workingDirectory }}/.build.ps1
+              arguments: -Task PublishToGallery -ResolveDependency -PublishKey '${{ parameters.galleryAPIKey }}'
+              pwsh: false
+              workingDirectory: ${{ parameters.workingDirectory }}

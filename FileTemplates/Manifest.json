@@ -1,11 +1,13 @@
 {
   "ModuleInfo": {
+    "Name": "",
     "CompanyName": "",
     "Copyright": "",
     "Author": "",
     "Guid": "",
     "Description": "",
-    "tags": [""]
+    "tags": [""],
+    "RequireLicenseAcceptance": false
   },
   "StaticResources": [""]
 }
