@@ -120,9 +120,13 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
 
     $manifestJson = Get-Content (Join-Path $BuildRoot Manifest.json) | ConvertFrom-Json
 
-    foreach ($manifestProperty in $manifestJson.ModuleInfo.PSObject.Properties) {
+    ##### hack to remove unsupported params
+    $cmdParams = Get-Command New-ModuleManifest | Select-Object -ExpandProperty parameters
+
+    foreach ($manifestProperty in $manifestJson.ModuleInfo.PSObject.Properties.where{ $cmdParams.ContainsKey($_.name) }) {
         $manifestData[$manifestProperty.Name] = $manifestProperty.Value
     }
+    #####
 
     $manifestData.remove("Name") | Out-Null
 
