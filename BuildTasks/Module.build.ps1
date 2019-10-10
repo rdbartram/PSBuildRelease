@@ -134,7 +134,7 @@ task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDepend
 
     #####prerelease hack until powershell supports native
 
-    if ($null -ne $env:GITVERSION_NUGETPRERELEASETAGV2) {
+    if ($false -eq [string]::IsNullOrEmpty($env:GITVERSION_NUGETPRERELEASETAGV2)) {
         $moduleData = ConvertFrom-Metadata $moduleManifest
         $moduleData.PrivateData.PSData += @{ prerelease = "-$env:GITVERSION_NUGETPRERELEASETAGV2" }
         Export-Metadata -Path $moduleManifest -InputObject $moduleData

@@ -173,11 +173,8 @@ jobs:
             inputs:
               ArtifactName: Module
               targetPath: ${{ parameters.workingDirectory }}/BuildOutput
-          - task: PowerShell@2
+          - pwsh: .build.ps1 -Task PublishToGallery -ResolveDependency -PublishKey "$(ApiKey)"
             displayName: Publish Module
-            inputs:
-              targetType: "filePath"
-              filePath: ${{ parameters.workingDirectory }}/.build.ps1
-              arguments: -Task PublishToGallery -ResolveDependency -PublishKey '${{ parameters.galleryAPIKey }}'
-              pwsh: false
-              workingDirectory: ${{ parameters.workingDirectory }}
+            workingDirectory: ${{ parameters.workingDirectory }}
+            env:
+              ApiKey: ${{ parameters.galleryAPIKey }}

@@ -14,7 +14,7 @@ param (
     $PublishGallery = (property PublishGallery "psgallery"),
 
     [string]
-    $PublishKey = (property PublishGallery $PublishKey)
+    $PublishKey = (property PublishKey $PublishKey)
 )
 
 task PublishToGallery {
@@ -28,8 +28,8 @@ task PublishToGallery {
         Verbose    = $VerbosePreference
     }
 
-    if ($PSBoundParameters.ContainsKey("PublishKey")) {
-        $publishParams.PublishKey = $PSBoundParameters.PublishKey
+    if ($null -ne $PublishKey) {
+        $publishParams.NuGetApiKey = $PublishKey
     }
 
     Publish-Module @publishParams
