@@ -46,7 +46,7 @@ task CompileClasses @{
             # Loop each class and remove usings whilst cataloging them to be added at the top of compiled module
             foreach ($classPath in $classPaths) {
                 $path = $classPath
-                $usingRaws = (Get-Content $path) -match 'using (module)|(namespace)'
+                $usingRaws = (Get-Content $path) -match 'using ((module)|(namespace))'
 
                 foreach ($usingRaw in $usingRaws) {
                     # matching is as following
@@ -79,7 +79,7 @@ task CompileClasses @{
                 foreach ($classPath in $classPaths) {
                     try {
                         # Remove usings and test class can be imported. In failure, catch will be called
-                        $parsedClassFile = ((Get-Content $classPath) -notmatch 'using (module)|(namespace)') -join [System.Environment]::newline
+                        $parsedClassFile = ((Get-Content $classPath) -notmatch 'using ((module)|(namespace))') -join [System.Environment]::newline
                         . ([scriptblock]::create($parsedClassFile))
 
                         # Add class content to output variable and remove class from classesToImport

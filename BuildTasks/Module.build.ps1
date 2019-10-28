@@ -32,7 +32,7 @@ task BuildModule @{
 
         foreach ($functionFile in $functionFiles) {
             $path = $functionFile.FullName
-            $usingRaws = (Get-Content $functionFile.FullName) -match '^using (module)|(namespace)'
+            $usingRaws = (Get-Content $functionFile.FullName) -match '^using ((module)|(namespace))'
 
             foreach ($usingRaw in $usingRaws) {
                 if ($usings -contains $usingRaw) {
@@ -55,7 +55,7 @@ task BuildModule @{
         }
 
         foreach ($functionFile in $functionFiles) {
-            Add-Content -Path $moduleFile -Value ((Get-Content $functionFile.FullName) -notmatch '^using (module)|(namespace)') -Force
+            Add-Content -Path $moduleFile -Value ((Get-Content $functionFile.FullName) -notmatch '^using ((module)|(namespace))') -Force
         }
 
         $publicFunctions = @()
