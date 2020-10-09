@@ -83,7 +83,7 @@ task CopyStaticResources @{
     }
 }
 
-task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDependentModules -inputs (Join-Path $BuildOutput "$ProjectName.psm1") -outputs (Join-Path $BuildOutput "$ProjectName.psd1") {
+task CreateModuleManifest -before PackageModule, CreateNugetSpec, DownloadDependentModules, CompileScriptToExe -inputs (Join-Path $BuildOutput "$ProjectName.psm1") -outputs (Join-Path $BuildOutput "$ProjectName.psd1") {
     $moduleFile = $inputs
     $moduleManifest = Join-Path $BuildOutput "$ProjectName.psd1"
 
@@ -147,7 +147,7 @@ Task PackageModule -inputs { Get-ChildItem $BuildOutput -Recurse -Exclude *.zip,
     Compress-Archive -Path (Join-Path $BuildOutput "*") -DestinationPath $Outputs -Force
 }
 
-Task DownloadDependentModules -Inputs (Join-Path $BuildOutput "$ProjectName.psd1") -Outputs (Join-Path $ProjectPath Dependencies\module.txt) {
+Task DownloadDependentModules -before CompileScriptToExe -Inputs (Join-Path $BuildOutput "$ProjectName.psd1") -Outputs (Join-Path $ProjectPath Dependencies\module.txt) {
 
     $requiredModules = (Import-PowerShellDataFile $inputs).RequiredModules
 
@@ -181,4 +181,8 @@ Task DownloadDependentModules -Inputs (Join-Path $BuildOutput "$ProjectName.psd1
     }
 
     New-Item -Path $outputs -ItemType File -Force | Out-Null
+}
+
+task CompileScriptToExe -inputs (Join-Path $BuildOutput "$ProjectName.ps1"), (Join-Path $BuildRoot package.psd1) -outputs (Join-Path $BuildOutput "$ProjectName.exe") {
+    Merge-Script -ConfigFile $inputs[1] -Verbose
 }
