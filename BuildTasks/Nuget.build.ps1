@@ -68,7 +68,7 @@ task CreateNugetSpec -Inputs (Join-Path $BuildOutput "$ProjectName.psd1") -Outpu
 
     $authorsElement = $doc.CreateNode("element", "authors", $ns)
     $authorsElement.InnerText = $moduleData.Author
-    $null = $metaDataElement.AppendChild($authors)
+    $null = $metaDataElement.AppendChild($authorsElement)
 
     $ownersElement = $doc.CreateNode("element", "owners", $ns)
     $ownersElement.InnerText = $moduleData.Author

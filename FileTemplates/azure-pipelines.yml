@@ -4,7 +4,7 @@ resources:
       type: github
       name: rdbartram/PSBuildRelease
       ref: refs/heads/master
-      endpoint: rdbartram
+      endpoint: github
 
 trigger:
   batch: true

@@ -34,7 +34,7 @@ task CompileClasses @{
             foreach ($file in $files) {
                 $classScript = @()
                 $dependentModules = $file["DependentModules"] | Where-Object -FilterScript {
-                    $null -ne $_ -and (Test-Path (Resolve-Path $_).Path)
+                    $null -ne $_ -and (Test-Path $_)
                 }
 
                 foreach ($dependentModule in $dependentModules) {
